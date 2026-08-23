@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# Env files (never commit secrets like your MongoDB URI)
+.env
+
+# Build output
+dist/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+.vscode/

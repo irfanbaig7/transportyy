@@ -1,0 +1,60 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+/* ---- Design tokens (Tailwind v4 @theme) ----
+   Brand direction taken straight from the mockups:
+   community ride-share, fresh green, clean white surfaces. */
+@theme {
+  --color-brand: #12a150;
+  --color-brand-dark: #0f8a44;
+  --color-brand-darker: #0c6f37;
+  --color-brand-light: #d9f5e3;
+  --color-brand-tint: #f1fbf5;
+
+  --color-ink: #0e1a13;      /* headings */
+  --color-body: #47575d;     /* body copy */
+  --color-muted: #93a1a6;    /* captions / placeholder */
+  --color-line: #e7ebe9;     /* hairline borders */
+  --color-canvas: #f6f8f7;   /* app background */
+  --color-surface: #ffffff;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Plus Jakarta Sans", "Inter", sans-serif;
+
+  --shadow-card: 0 1px 2px rgba(14, 26, 19, 0.04), 0 8px 24px rgba(14, 26, 19, 0.06);
+  --shadow-float: 0 10px 30px rgba(18, 161, 80, 0.28);
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    font-family: var(--font-sans);
+    color: var(--color-body);
+    background: #e9edec;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    color: var(--color-ink);
+    letter-spacing: -0.01em;
+  }
+  input, select, textarea, button {
+    font-family: inherit;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  .tap { -webkit-tap-highlight-color: transparent; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .anim-in { animation: fadeUp 0.32s cubic-bezier(0.22, 1, 0.36, 1) both; }
+}
