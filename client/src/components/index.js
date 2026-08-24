@@ -1,7 +1,6 @@
 // Barrel export so screens can import everything from one place:
 //   import { Screen, TopBar, Button, RideCard } from '../../components'
 export { default as Device } from './Device'
-export { default as StatusBar } from './StatusBar'
 export { default as Screen } from './Screen'
 export { default as TopBar } from './TopBar'
 export { default as BottomNav } from './BottomNav'
