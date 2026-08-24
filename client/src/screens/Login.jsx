@@ -2,14 +2,25 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Phone, Lock, Eye, EyeOff } from 'lucide-react'
 import { Button, Input } from '../components'
+import { useApp } from '../context/AppContext'
 
 export default function Login() {
     const [showPw, setShowPw] = useState(false)
+    const [phone, setPhone] = useState('')
+    const [password, setPassword] = useState('')
+    const [err, setErr] = useState('')
     const navigate = useNavigate()
+    const { login, loading } = useApp()
 
-    const submit = (e) => {
+    const submit = async (e) => {
         e.preventDefault()
-        navigate('/home')
+        setErr('')
+        try {
+            await login({ phone, password })
+            navigate('/home')
+        } catch (e) {
+            setErr(e.message || 'Login failed.')
+        }
     }
 
     return (
@@ -18,13 +29,15 @@ export default function Login() {
             <p className="mt-1 text-sm text-muted">Log in to continue</p>
 
             <form onSubmit={submit} className="mt-7 space-y-4 flex-1">
-                <Input label="Mobile Number" icon={Phone} type="tel" placeholder="+91 98765 43210" />
+                <Input label="Mobile Number" icon={Phone} type="tel" placeholder="+91 98765 43210" value={phone} onChange={(e) => setPhone(e.target.value)} />
                 <div>
                     <Input
                         label="Password"
                         icon={Lock}
                         type={showPw ? 'text' : 'password'}
                         placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
                         right={
                             <button type="button" onClick={() => setShowPw((v) => !v)} className="tap text-muted">
                                 {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -37,21 +50,10 @@ export default function Login() {
                         </button>
                     </div>
                 </div>
-                <Button full type="submit" className="mt-2">Log In</Button>
+                {err && <p className="text-xs font-medium text-red-500">{err}</p>}
+                <Button full type="submit" className="mt-2" disabled={loading}>{loading ? 'Logging in…' : 'Log In'}</Button>
             </form>
 
-            <div className="mt-2">
-                <div className="flex items-center gap-3 my-4">
-                    <span className="h-px flex-1 bg-line" />
-                    <span className="text-xs text-muted">or continue with</span>
-                    <span className="h-px flex-1 bg-line" />
-                </div>
-                <div className="flex items-center justify-center gap-3">
-                    {['G', 'f', '🍎'].map((l, idx) => (
-                        <span key={idx} className="h-12 w-12 rounded-xl border border-line grid place-items-center font-bold text-ink">{l}</span>
-                    ))}
-                </div>
-            </div>
             <p className="text-center text-sm text-muted mt-5">
                 Don't have an account?{' '}
                 <button onClick={() => navigate('/signup')} className="tap font-semibold text-brand">Sign Up</button>

@@ -12,18 +12,13 @@ app.use(cors());
 app.use(express.json());
 
 // ---- Database ----
-// Tries to connect to MongoDB using MONGO_URI from server/.env
-// (Server still starts even if the URI is missing, so you can test the stack.)
 connectDB();
 
 // ---- Routes ----
-
-// Simple root route
 app.get('/', (req, res) => {
   res.send('API is running. Try GET /api/health');
 });
 
-// Health check: tells you if the server and the database are up
 app.get('/api/health', (req, res) => {
   const states = ['disconnected', 'connected', 'connecting', 'disconnecting'];
   res.json({
@@ -34,8 +29,15 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Example CRUD routes to prove MongoDB works
 app.use('/api/items', require('./routes/itemRoutes'));
+
+// ---- Chalo app routes ----
+app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/users', require('./routes/userRoutes'));
+app.use('/api/rides', require('./routes/rideRoutes'));
+app.use('/api/bookings', require('./routes/bookingRoutes'));
+app.use('/api/notifications', require('./routes/notificationRoutes'));
+app.use('/api/chats', require('./routes/chatRoutes'));
 
 // ---- 404 handler ----
 app.use((req, res) => {
