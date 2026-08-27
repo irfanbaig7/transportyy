@@ -50,6 +50,8 @@ export default function Home() {
         navigate('/search')
     }
 
+    if (!user) return null
+
     return (
         <Screen
             header={

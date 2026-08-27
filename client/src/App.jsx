@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Device from './components/Device'
 import IncomingCallSheet from './components/IncomingCallSheet'
+import RequireAuth from './components/RequireAuth'
 
 // Onboarding + Auth
 import Onboarding from './screens/Onboarding'
@@ -59,7 +60,7 @@ export default function App() {
   return (
     <Device>
       <Routes>
-        {/* Onboarding + Auth */}
+        {/* Public — onboarding + auth */}
         <Route path="/" element={<Onboarding />} />
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/role" element={<ChooseRole />} />
@@ -70,48 +71,51 @@ export default function App() {
         <Route path="/otp" element={<OtpVerify />} />
         <Route path="/reset" element={<ResetPassword />} />
 
-        {/* Driver */}
-        <Route path="/driver/basic" element={<DriverBasicInfo />} />
-        <Route path="/driver/car" element={<DriverCarDetails />} />
-        <Route path="/driver/documents" element={<DriverDocuments />} />
-        <Route path="/driver/review" element={<DriverReview />} />
-        <Route path="/driver/dashboard" element={<DriverDashboard />} />
-        <Route path="/driver/requests" element={<BookingRequests />} />
-        <Route path="/driver/earnings" element={<Earnings />} />
+        {/* Everything below requires a logged-in session */}
+        <Route element={<RequireAuth />}>
+          {/* Driver */}
+          <Route path="/driver/basic" element={<DriverBasicInfo />} />
+          <Route path="/driver/car" element={<DriverCarDetails />} />
+          <Route path="/driver/documents" element={<DriverDocuments />} />
+          <Route path="/driver/review" element={<DriverReview />} />
+          <Route path="/driver/dashboard" element={<DriverDashboard />} />
+          <Route path="/driver/requests" element={<BookingRequests />} />
+          <Route path="/driver/earnings" element={<Earnings />} />
 
-        {/* Ride posting + booking */}
-        <Route path="/post/route" element={<PostRideRoute />} />
-        <Route path="/post/timing" element={<PostRideTiming />} />
-        <Route path="/post/review" element={<PostRideReview />} />
-        <Route path="/post/success" element={<RidePosted />} />
-        <Route path="/search" element={<PassengerSearch />} />
-        <Route path="/filters" element={<SearchFilters />} />
-        <Route path="/ride/:id" element={<RideDetails />} />
-        <Route path="/booking/payment/:id" element={<BookingPayment />} />
-        <Route path="/booking/processing" element={<PaymentProcessing />} />
-        <Route path="/booking/success" element={<BookingConfirmed />} />
-        <Route path="/booking/failed" element={<PaymentFailed />} />
+          {/* Ride posting + booking */}
+          <Route path="/post/route" element={<PostRideRoute />} />
+          <Route path="/post/timing" element={<PostRideTiming />} />
+          <Route path="/post/review" element={<PostRideReview />} />
+          <Route path="/post/success" element={<RidePosted />} />
+          <Route path="/search" element={<PassengerSearch />} />
+          <Route path="/filters" element={<SearchFilters />} />
+          <Route path="/ride/:id" element={<RideDetails />} />
+          <Route path="/booking/payment/:id" element={<BookingPayment />} />
+          <Route path="/booking/processing" element={<PaymentProcessing />} />
+          <Route path="/booking/success" element={<BookingConfirmed />} />
+          <Route path="/booking/failed" element={<PaymentFailed />} />
 
-        {/* Trips */}
-        <Route path="/trips" element={<MyTrips />} />
-        <Route path="/trips/:id" element={<TripDetails />} />
-        <Route path="/trips/:id/ongoing" element={<TripOngoing />} />
-        <Route path="/trips/:id/completed" element={<TripCompleted />} />
-        <Route path="/trips/:id/cancel" element={<CancelBooking />} />
-        <Route path="/trips/:id/rate" element={<RateReview />} />
+          {/* Trips */}
+          <Route path="/trips" element={<MyTrips />} />
+          <Route path="/trips/:id" element={<TripDetails />} />
+          <Route path="/trips/:id/ongoing" element={<TripOngoing />} />
+          <Route path="/trips/:id/completed" element={<TripCompleted />} />
+          <Route path="/trips/:id/cancel" element={<CancelBooking />} />
+          <Route path="/trips/:id/rate" element={<RateReview />} />
 
-        {/* App / common */}
-        <Route path="/home" element={<Home />} />
-        <Route path="/notifications" element={<Notifications />} />
-        <Route path="/messages" element={<ChatList />} />
-        <Route path="/chat/:id" element={<ChatThread />} />
-        <Route path="/call/:id" element={<CallScreen />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/profile/edit" element={<EditProfile />} />
-        <Route path="/menu" element={<Menu />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/help" element={<Help />} />
-        <Route path="/states" element={<StatesGallery />} />
+          {/* App / common */}
+          <Route path="/home" element={<Home />} />
+          <Route path="/notifications" element={<Notifications />} />
+          <Route path="/messages" element={<ChatList />} />
+          <Route path="/chat/:id" element={<ChatThread />} />
+          <Route path="/call/:id" element={<CallScreen />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/profile/edit" element={<EditProfile />} />
+          <Route path="/menu" element={<Menu />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/help" element={<Help />} />
+          <Route path="/states" element={<StatesGallery />} />
+        </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

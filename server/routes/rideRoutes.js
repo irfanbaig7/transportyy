@@ -67,7 +67,7 @@ router.get('/', async (req, res) => {
     if (to) query.to = new RegExp(to, 'i');
     if (date) query.date = date;
 
-    const rides = await Ride.find(query).populate('driver', 'name rating verified car');
+    const rides = await Ride.find(query).populate('driver', 'name rating ratingCount verified car');
     res.json({ rides });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -87,8 +87,7 @@ router.get('/mine', protect, async (req, res) => {
 // GET /api/rides/:id  (Ride Details screen)
 router.get('/:id', async (req, res) => {
   try {
-    const ride = await Ride.findById(req.params.id).populate('driver', 'name rating verified car reviewsCount');
-    if (!ride) return res.status(404).json({ error: 'Ride not found.' });
+    const ride = await Ride.findById(req.params.id).populate('driver', 'name rating ratingCount verified car'); if (!ride) return res.status(404).json({ error: 'Ride not found.' });
     res.json({ ride });
   } catch (err) {
     res.status(400).json({ error: err.message });

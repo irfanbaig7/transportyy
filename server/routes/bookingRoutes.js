@@ -109,24 +109,41 @@ router.patch('/:id/accept', protect, async (req, res) => {
 
 // PATCH /api/bookings/:id/reject  (Driver rejects request)
 router.patch('/:id/reject', protect, async (req, res) => {
-  const booking = await Booking.findOneAndUpdate(
-    { _id: req.params.id, driver: req.user._id },
-    { status: 'cancelled', cancelReason: 'Rejected by driver' },
-    { new: true }
-  );
-  if (!booking) return res.status(404).json({ error: 'Booking not found.' });
-  res.json({ booking });
+  try {
+    const booking = await Booking.findOne({ _id: req.params.id, driver: req.user._id });
+    if (!booking) return res.status(404).json({ error: 'Booking not found.' });
+    if (booking.status === 'cancelled') return res.json({ booking });
+
+    booking.status = 'cancelled';
+    booking.cancelReason = 'Rejected by driver';
+    await booking.save();
+
+    await Ride.findByIdAndUpdate(booking.ride, { $inc: { seatsAvailable: booking.seats } });
+
+    res.json({ booking });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
 // PATCH /api/bookings/:id/cancel  (Cancel Booking screen)  Body: { reason }
+// Also gives the seat(s) back to the ride so other passengers can book them.
 router.patch('/:id/cancel', protect, async (req, res) => {
-  const booking = await Booking.findOneAndUpdate(
-    { _id: req.params.id, passenger: req.user._id },
-    { status: 'cancelled', cancelReason: req.body.reason || '' },
-    { new: true }
-  );
-  if (!booking) return res.status(404).json({ error: 'Booking not found.' });
-  res.json({ booking });
+  try {
+    const booking = await Booking.findOne({ _id: req.params.id, passenger: req.user._id });
+    if (!booking) return res.status(404).json({ error: 'Booking not found.' });
+    if (booking.status === 'cancelled') return res.json({ booking });
+
+    booking.status = 'cancelled';
+    booking.cancelReason = req.body.reason || '';
+    await booking.save();
+
+    await Ride.findByIdAndUpdate(booking.ride, { $inc: { seatsAvailable: booking.seats } });
+
+    res.json({ booking });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
 // PATCH /api/bookings/:id/start  (Trip Ongoing screen)
@@ -164,5 +181,21 @@ router.patch('/:id/rate', protect, async (req, res) => {
 
   res.json({ booking });
 });
+
+// GET /api/bookings/earnings  (Driver — completed bookings where I was the driver)
+// Must stay ABOVE the "/:id" route below, otherwise "earnings" would be treated as an :id.
+router.get('/earnings', protect, async (req, res) => {
+  try {
+    const bookings = await Booking.find({ driver: req.user._id, status: 'completed' })
+      .populate('passenger', 'name')
+      .populate('ride')
+      .sort({ createdAt: -1 });
+    res.json({ bookings });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/bookings/:id  (Trip Details screen)
 
 module.exports = router;

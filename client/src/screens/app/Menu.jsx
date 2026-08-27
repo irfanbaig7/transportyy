@@ -1,6 +1,7 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Car, Wallet, Inbox, MapPinned, Settings, HelpCircle, LogOut, ChevronRight } from 'lucide-react'
 import { Screen, TopBar } from '../../components'
+import { useApp } from '../../context/AppContext'
 
 const ITEMS = [
     { icon: Car, label: 'Become a Driver', to: '/driver/basic' },
@@ -12,6 +13,14 @@ const ITEMS = [
 ]
 
 export default function Menu() {
+    const navigate = useNavigate()
+    const { logout } = useApp()
+
+    const doLogout = () => {
+        logout()
+        navigate('/onboarding')
+    }
+
     return (
         <Screen header={<TopBar title="Menu" />}>
             <div className="rounded-2xl bg-surface border border-line divide-y divide-line overflow-hidden mb-4">
@@ -23,10 +32,10 @@ export default function Menu() {
                     </Link>
                 ))}
             </div>
-            <Link to="/onboarding" className="tap flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-surface border border-line text-red-500">
+            <button onClick={doLogout} className="tap w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-surface border border-line text-red-500">
                 <LogOut size={18} />
                 <span className="text-sm font-semibold">Log Out</span>
-            </Link>
+            </button>
         </Screen>
     )
 }

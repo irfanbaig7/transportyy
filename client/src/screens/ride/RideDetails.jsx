@@ -61,6 +61,20 @@ export default function RideDetails() {
         }
     }
 
+    const callDriver = async () => {
+        if (!driverId) return
+        setMsgErr('')
+        setMessaging(true)
+        try {
+            const d = await api.startChat(driverId)
+            navigate(`/call/${d.chat._id || d.chat.id}`, { state: { role: 'caller', otherUserId: driverId, otherUserName: driver.name || 'Driver' } })
+        } catch (e) {
+            setMsgErr(e.message || 'Could not start call.')
+        } finally {
+            setMessaging(false)
+        }
+    }
+
     return (
         <Screen
             header={<TopBar title="Ride Details" />}
@@ -130,7 +144,7 @@ export default function RideDetails() {
                 <Button variant="outline" full icon={MessageCircle} onClick={openChat} disabled={messaging}>
                     {messaging ? 'Opening…' : 'Message'}
                 </Button>
-                <Button variant="outline" full icon={Phone}>Call</Button>
+                <Button variant="outline" full icon={Phone} onClick={callDriver} disabled={messaging}>Call</Button>
             </div>
         </Screen>
     )

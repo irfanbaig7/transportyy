@@ -5,6 +5,9 @@ import { useApp } from '../../context/AppContext'
 
 export default function Profile() {
     const { user } = useApp()
+    const memberSince = user.createdAt
+        ? new Date(user.createdAt).toLocaleDateString([], { month: 'short', year: 'numeric' })
+        : '—'
     return (
         <Screen header={<TopBar title="Profile" back={false} />} footer={<BottomNav />}>
             <div className="flex flex-col items-center text-center mb-5">
@@ -18,8 +21,7 @@ export default function Profile() {
             <div className="grid grid-cols-3 gap-2 mb-5">
                 <Stat icon={Star} label="Rating" value={user.rating} />
                 <Stat icon={RouteIcon} label="Trips" value={user.tripsCount} />
-                <Stat icon={ShieldCheck} label="Member" value={user.memberSince} />
-            </div>
+                <Stat icon={ShieldCheck} label="Member" value={memberSince} />            </div>
 
             <div className="rounded-2xl bg-surface border border-line divide-y divide-line overflow-hidden">
                 <MenuRow to="/menu" icon={MenuIcon} label="Menu" />

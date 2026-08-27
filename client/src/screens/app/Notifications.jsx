@@ -23,8 +23,7 @@ export default function Notifications() {
                 {notifications.map((n) => {
                     const Icon = ICONS[n.type] || Bell
                     return (
-                        <div key={n.id} className={`flex gap-3 p-4 rounded-xl border border-line ${n.unread ? 'bg-brand-tint' : 'bg-surface'}`}>
-                            <span className="h-10 w-10 shrink-0 rounded-full bg-white grid place-items-center"><Icon size={17} className="text-brand" /></span>
+                        <div key={n._id || n.id} className={`flex gap-3 p-4 rounded-xl border border-line ${n.unread ? 'bg-brand-tint' : 'bg-surface'}`}>                            <span className="h-10 w-10 shrink-0 rounded-full bg-white grid place-items-center"><Icon size={17} className="text-brand" /></span>
                             <div className="flex-1 min-w-0">
                                 <p className="text-sm font-semibold text-ink">{n.title}</p>
                                 <p className="text-xs text-muted mt-0.5">{n.body}</p>

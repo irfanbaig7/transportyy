@@ -1,13 +1,19 @@
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
+import { useState } from 'react'
 import { Phone, MessageCircle, KeyRound } from 'lucide-react'
 import { Screen, TopBar, Button, RouteLine, Avatar, Badge, StickyCTA } from '../../components'
 import { useApp } from '../../context/AppContext'
+import { api } from '../../api/client'
 
 export default function TripDetails() {
     const { id } = useParams()
     const navigate = useNavigate()
-    const { getTripById } = useApp()
+    const { getTripById, startTrip } = useApp()
     const t = getTripById(id)
+    const [starting, setStarting] = useState(false)
+    const [connecting, setConnecting] = useState(false)
+    const [err, setErr] = useState('')
+
     if (!t) return null
 
     const driver = t.driver || {}
@@ -17,16 +23,56 @@ export default function TripDetails() {
     const via = t.via || t.ride?.via
     const date = t.date || t.ride?.date
     const time = t.time || t.ride?.time
+    const driverId = driver._id || driver.id
+
+    const beginTrip = async () => {
+        setStarting(true)
+        try {
+            await startTrip(t._id || t.id)
+            navigate(`/trips/${t._id || t.id}/ongoing`)
+        } finally {
+            setStarting(false)
+        }
+    }
+
+    const openChat = async () => {
+        if (!driverId) return
+        setErr('')
+        setConnecting(true)
+        try {
+            const d = await api.startChat(driverId)
+            navigate(`/chat/${d.chat._id || d.chat.id}`)
+        } catch (e) {
+            setErr(e.message || 'Could not start chat.')
+        } finally {
+            setConnecting(false)
+        }
+    }
+
+    const callDriver = async () => {
+        if (!driverId) return
+        setErr('')
+        setConnecting(true)
+        try {
+            const d = await api.startChat(driverId)
+            navigate(`/call/${d.chat._id || d.chat.id}`, { state: { role: 'caller', otherUserId: driverId, otherUserName: driver.name || 'Driver' } })
+        } catch (e) {
+            setErr(e.message || 'Could not start call.')
+        } finally {
+            setConnecting(false)
+        }
+    }
 
     return (
         <Screen
             header={<TopBar title="Trip Details" />}
             footer={
                 <StickyCTA>
+                    {err && <p className="text-xs font-medium text-red-500 mb-2">{err}</p>}
                     {t.status === 'upcoming' && (
                         <div className="flex gap-3">
                             <Button variant="outline" full onClick={() => navigate(`/trips/${t._id || t.id}/cancel`)}>Cancel</Button>
-                            <Button full onClick={() => navigate(`/trips/${t._id || t.id}/ongoing`)}>Start Trip</Button>
+                            <Button full onClick={beginTrip} disabled={starting}>{starting ? 'Starting…' : 'Start Trip'}</Button>
                         </div>
                     )}
                     {t.status === 'ongoing' && <Button full onClick={() => navigate(`/trips/${t._id || t.id}/ongoing`)}>Track Trip</Button>}
@@ -56,8 +102,12 @@ export default function TripDetails() {
                     <p className="text-xs text-muted">{car.brand || 'Car'} {car.number ? `· ${car.number}` : ''}</p>
                 </div>
                 <div className="flex gap-2">
-                    <Link to="/messages" className="tap h-9 w-9 rounded-full bg-brand-tint grid place-items-center"><MessageCircle size={16} className="text-brand" /></Link>
-                    <button className="tap h-9 w-9 rounded-full bg-brand-tint grid place-items-center"><Phone size={16} className="text-brand" /></button>
+                    <button onClick={openChat} disabled={connecting} className="tap h-9 w-9 rounded-full bg-brand-tint grid place-items-center disabled:opacity-50">
+                        <MessageCircle size={16} className="text-brand" />
+                    </button>
+                    <button onClick={callDriver} disabled={connecting} className="tap h-9 w-9 rounded-full bg-brand-tint grid place-items-center disabled:opacity-50">
+                        <Phone size={16} className="text-brand" />
+                    </button>
                 </div>
             </div>
 

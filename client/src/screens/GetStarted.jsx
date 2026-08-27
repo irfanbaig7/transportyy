@@ -14,7 +14,6 @@ export default function GetStarted() {
             <div className="space-y-3">
                 <Button full to="/signup">Create Account</Button>
                 <Button full variant="outline" to="/login">Log In</Button>
-                <Button full variant="ghost" to="/home">Continue as Guest</Button>
             </div>
         </div>
     )

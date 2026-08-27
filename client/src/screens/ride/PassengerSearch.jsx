@@ -1,16 +1,21 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { MapPin, SlidersHorizontal, Users, Search } from 'lucide-react'
 import { Screen, TopBar, RideCard, EmptyState, Spinner } from '../../components'
 import { useApp } from '../../context/AppContext'
 
+function parseTimeToday(timeStr) {
+    if (!timeStr) return 0
+    const t = Date.parse(`${new Date().toDateString()} ${timeStr}`)
+    return Number.isNaN(t) ? 0 : t
+}
+
 export default function PassengerSearch() {
     const navigate = useNavigate()
-    const { search, setSearch, rides, searchRides, loading } = useApp()
+    const { search, setSearch, rides, searchRides, loading, filters } = useApp()
     const [editing, setEditing] = useState(!search.from && !search.to)
     const [form, setForm] = useState({ from: search.from || '', to: search.to || '' })
 
-    // Load rides on mount, and whenever the confirmed search changes.
     useEffect(() => {
         searchRides({ from: search.from, to: search.to })
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -20,6 +25,24 @@ export default function PassengerSearch() {
         setSearch({ from: form.from, to: form.to })
         setEditing(false)
     }
+
+    // Apply the filters/sort chosen on the Filters screen client-side —
+    // the search API only narrows by route, this narrows/orders the result.
+    const visibleRides = useMemo(() => {
+        let list = rides.filter((r) => {
+            if (filters.maxPrice && r.price > filters.maxPrice) return false
+            if (filters.ac && !(r.driver?.car?.ac)) return false
+            if (filters.verifiedOnly && !r.driver?.verified) return false
+            if (filters.seats && r.seatsAvailable < filters.seats) return false
+            return true
+        })
+
+        if (filters.sort === 'price') list = [...list].sort((a, b) => a.price - b.price)
+        else if (filters.sort === 'rating') list = [...list].sort((a, b) => (b.driver?.rating || 0) - (a.driver?.rating || 0))
+        else if (filters.sort === 'time') list = [...list].sort((a, b) => parseTimeToday(a.time) - parseTimeToday(b.time))
+
+        return list
+    }, [rides, filters])
 
     return (
         <Screen header={<TopBar title="Find a Ride" />} padded={false}>
@@ -77,13 +100,13 @@ export default function PassengerSearch() {
 
                 {loading ? (
                     <div className="flex justify-center py-10"><Spinner size={28} /></div>
-                ) : rides.length ? (
-                    rides.map((r) => <RideCard key={r._id || r.id} ride={r} to={`/ride/${r._id || r.id}`} />)
+                ) : visibleRides.length ? (
+                    visibleRides.map((r) => <RideCard key={r._id || r.id} ride={r} to={`/ride/${r._id || r.id}`} />)
                 ) : (
                     <EmptyState
                         icon={Users}
                         title="No rides found"
-                        message="Try a different route, or search with blank fields to see all rides."
+                        message="Try a different route, or loosen your filters."
                     />
                 )}
             </div>
