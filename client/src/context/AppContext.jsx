@@ -1,10 +1,18 @@
 import { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react'
 import { api, saveSession, clearSession, loadSession } from '../api/client'
+import { connectSocket, disconnectSocket } from '../socket'
 
 const AppContext = createContext(null)
 
 export function AppProvider({ children }) {
   const session = loadSession()
+
+  const [darkMode, setDarkModeState] = useState(() => localStorage.getItem('chalo_dark') === 'true')
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', darkMode)
+    localStorage.setItem('chalo_dark', String(darkMode))
+  }, [darkMode])
+  const setDarkMode = (v) => setDarkModeState(v)
 
   const [user, setUser] = useState(session?.user || null)
   const [isAuthed, setIsAuthed] = useState(!!session)
@@ -20,7 +28,6 @@ export function AppProvider({ children }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  // Draft state carried across multi-step flows (kept client-side until submit)
   const [rideDraft, setRideDraft] = useState({
     from: '', to: '', via: '', date: '', time: '', seats: 2, price: 650,
   })
@@ -28,7 +35,11 @@ export function AppProvider({ children }) {
   const [filters, setFilters] = useState({ sort: 'best', maxPrice: 1000, ac: false, verifiedOnly: false, seats: 1 })
   const [lastBooking, setLastBooking] = useState(null)
 
-  // ---- Load "me" once we have a session ----
+  // ---- Real-time (Socket.io) ----
+  const [socket, setSocket] = useState(null)
+  const [incomingCall, setIncomingCall] = useState(null)
+  const clearIncomingCall = useCallback(() => setIncomingCall(null), [])
+
   useEffect(() => {
     if (!isAuthed) return
     api.getMe().then((d) => {
@@ -41,7 +52,6 @@ export function AppProvider({ children }) {
     })
   }, [isAuthed])
 
-  // ---- Refresh helpers (call after mutations, or on demand) ----
   const refreshNotifications = useCallback(() => {
     if (!isAuthed) return
     api.getNotifications().then((d) => setNotifications(d.notifications)).catch(() => { })
@@ -76,18 +86,66 @@ export function AppProvider({ children }) {
     refreshMyRides()
   }, [isAuthed, refreshNotifications, refreshChats, refreshMyTrips, refreshRequests, refreshMyRides])
 
+  useEffect(() => {
+    if (!isAuthed) {
+      disconnectSocket()
+      setSocket(null)
+      return
+    }
+    const token = localStorage.getItem('chalo_token')
+    if (!token) return
+    const s = connectSocket(token)
+    setSocket(s)
+  }, [isAuthed])
+
+  useEffect(() => {
+    if (!socket || !user) return
+    const myId = String(user._id)
+
+    const onChatMessage = ({ chatId, message }) => {
+      setChats((cs) => {
+        const idx = cs.findIndex((c) => String(c._id || c.id) === String(chatId))
+        if (idx === -1) {
+          refreshChats()
+          return cs
+        }
+        const updated = [...cs]
+        const chat = { ...updated[idx] }
+        chat.messages = [...(chat.messages || []), message]
+        chat.lastMessage = message.text
+        chat.lastTime = 'now'
+        const mine = String(message.sender) === myId
+        if (!mine) chat.unread = (chat.unread || 0) + 1
+        updated[idx] = chat
+        return updated
+      })
+    }
+
+    const onIncomingCall = (payload) => setIncomingCall(payload)
+    const onCallEnded = ({ fromUserId }) => {
+      setIncomingCall((c) => (c && c.fromUserId === fromUserId ? null : c))
+    }
+
+    socket.on('chat:message', onChatMessage)
+    socket.on('call:incoming', onIncomingCall)
+    socket.on('call:ended', onCallEnded)
+
+    return () => {
+      socket.off('chat:message', onChatMessage)
+      socket.off('call:incoming', onIncomingCall)
+      socket.off('call:ended', onCallEnded)
+    }
+  }, [socket, user, refreshChats])
+
   const actions = useMemo(() => ({
     setRole,
 
-    // ---- Auth ----
     signup: async (payload) => {
       setLoading(true); setError(null)
       try {
         const d = await api.signup(payload)
         saveSession(d.user, d.token)
-        setUser(d.user)
-        setRole(d.user.role)
-        setIsAuthed(true)
+        setUser(d.user); setRole(d.user.role); setIsAuthed(true)
         return d.user
       } catch (e) { setError(e.message); throw e } finally { setLoading(false) }
     },
@@ -96,14 +154,14 @@ export function AppProvider({ children }) {
       try {
         const d = await api.login(payload)
         saveSession(d.user, d.token)
-        setUser(d.user)
-        setRole(d.user.role)
-        setIsAuthed(true)
+        setUser(d.user); setRole(d.user.role); setIsAuthed(true)
         return d.user
       } catch (e) { setError(e.message); throw e } finally { setLoading(false) }
     },
     logout: () => {
       clearSession()
+      disconnectSocket()
+      setSocket(null)
       setIsAuthed(false)
       setUser(null)
       setTrips([]); setRequests([]); setDriverTrips([]); setNotifications([]); setChats([])
@@ -114,7 +172,6 @@ export function AppProvider({ children }) {
       setUser(d.user)
       return d.user
     },
-
     toggleAvailability: async () => {
       const next = !isAvailable
       setIsAvailable(next)
@@ -125,23 +182,18 @@ export function AppProvider({ children }) {
       await api.setAvailability(v)
     },
 
-    // ---- Driver onboarding ----
     updateDriverProfile: (payload) => api.updateDriverProfile(payload),
     updateDocuments: (payload) => api.updateDocuments(payload),
     becomeDriver: async () => {
       const d = await api.becomeDriver()
-      setUser(d.user)
-      setRole('driver')
-      setIsAvailable(true)
+      setUser(d.user); setRole('driver'); setIsAvailable(true)
       return d.user
     },
 
-    // ---- Ride drafts / search / filters ----
     setRideDraft: (patch) => setRideDraft((d) => ({ ...d, ...patch })),
     setSearch: (patch) => setSearch((s) => ({ ...s, ...patch })),
     setFilters: (patch) => setFilters((f) => ({ ...f, ...patch })),
 
-    // ---- Rides ----
     searchRides: async (params) => {
       setLoading(true)
       try {
@@ -157,17 +209,13 @@ export function AppProvider({ children }) {
       return d.ride
     },
 
-    // ---- Booking ----
     bookRide: async ({ ride, seats = 1, paymentMethod = 'UPI' }) => {
       const d = await api.createBooking({ rideId: ride._id || ride.id, seats, paymentMethod })
       setLastBooking(d.booking)
       refreshMyTrips()
       return d.booking
     },
-    cancelBooking: async (tripId, reason = '') => {
-      await api.cancelBooking(tripId, reason)
-      refreshMyTrips()
-    },
+    cancelBooking: async (tripId, reason = '') => { await api.cancelBooking(tripId, reason); refreshMyTrips() },
     startTrip: async (tripId) => { await api.startBooking(tripId); refreshMyTrips() },
     completeTrip: async (tripId) => { await api.completeBooking(tripId); refreshMyTrips() },
     rateTrip: async (tripId, rating, text = '') => { await api.rateBooking(tripId, rating, text); refreshMyTrips() },
@@ -175,31 +223,43 @@ export function AppProvider({ children }) {
     acceptRequest: async (id) => { await api.acceptBooking(id); refreshRequests() },
     rejectRequest: async (id) => { await api.rejectBooking(id); refreshRequests() },
 
-    // ---- Notifications ----
     markAllNotificationsRead: async () => {
       setNotifications((n) => n.map((x) => ({ ...x, unread: false })))
       await api.markAllRead()
     },
 
-    // ---- Chat ----
-    sendMessage: async (chatId, text) => {
-      const d = await api.sendMessage(chatId, text)
-      setChats((cs) => cs.map((c) => (c._id === chatId ? d.chat : c)))
+    sendMessage: (chatId, text) => {
+      return new Promise((resolve, reject) => {
+        if (socket && socket.connected) {
+          socket.emit('chat:send', { chatId, text }, (res) => {
+            if (res?.ok) resolve(res.message)
+            else reject(new Error(res?.error || 'Failed to send message.'))
+          })
+        } else {
+          api.sendMessage(chatId, text).then((d) => { refreshChats(); resolve(d) }).catch(reject)
+        }
+      })
     },
+    markChatRead: (chatId) => {
+      setChats((cs) => cs.map((c) => (String(c._id || c.id) === String(chatId) ? { ...c, unread: 0 } : c)))
+    },
+    clearIncomingCall,
 
     refreshNotifications, refreshChats, refreshMyTrips, refreshRequests, refreshMyRides,
-  }), [isAvailable, rideDraft, refreshNotifications, refreshChats, refreshMyTrips, refreshRequests, refreshMyRides])
+  }), [isAvailable, rideDraft, socket, refreshNotifications, refreshChats, refreshMyTrips, refreshRequests, refreshMyRides, clearIncomingCall])
 
   const getters = useMemo(() => ({
     getRideById: (id) => rides.find((r) => r._id === id || r.id === id),
     getTripById: (id) => trips.find((t) => t._id === id || t.id === id),
-    getChatById: (id) => chats.find((c) => c._id === id || c.id === id),
+    getChatById: (id) => chats.find((c) => String(c._id || c.id) === String(id)),
     unreadNotifications: notifications.filter((n) => n.unread).length,
     pendingRequests: requests.filter((r) => r.status === 'pending').length,
   }), [rides, trips, chats, notifications, requests])
 
   const value = {
     user, isAuthed, role, isAvailable, loading, error,
+    darkMode, setDarkMode,
+    socket, incomingCall,
     rides, trips, requests, driverTrips, notifications, chats,
     rideDraft, search, filters, lastBooking,
     ...actions,

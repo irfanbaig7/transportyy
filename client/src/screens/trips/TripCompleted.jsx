@@ -10,6 +10,11 @@ export default function TripCompleted() {
     const t = getTripById(id)
     if (!t) return null
 
+    const from = t.from || t.ride?.from || '—'
+    const to = t.to || t.ride?.to || '—'
+    const date = t.date || t.ride?.date
+    const time = t.time || t.ride?.time
+
     return (
         <div className="flex flex-col h-full px-6 pt-10 pb-6">
             <div className="flex flex-col items-center text-center mb-6">
@@ -20,12 +25,12 @@ export default function TripCompleted() {
                 <p className="text-sm text-muted mt-1">Hope you had a safe journey.</p>
             </div>
             <div className="rounded-2xl bg-surface border border-line p-4 shadow-[var(--shadow-card)] mb-4">
-                <RouteLine compact from={t.from} to={t.to} />
-                <p className="text-xs text-muted mt-2">{t.date} · {t.time} · Total Paid ₹{t.total}</p>
+                <RouteLine compact from={from} to={to} />
+                <p className="text-xs text-muted mt-2">{date} {time ? `· ${time}` : ''} · Total Paid ₹{t.total}</p>
             </div>
             <div className="flex-1" />
             <div className="space-y-3">
-                {!t.rated && <Button full onClick={() => navigate(`/trips/${t.id}/rate`)}>Rate this Trip</Button>}
+                {!t.rated && <Button full onClick={() => navigate(`/trips/${t._id || t.id}/rate`)}>Rate this Trip</Button>}
                 <Button full variant="outline" to="/trips">Back to Trips</Button>
             </div>
         </div>

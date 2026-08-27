@@ -9,11 +9,15 @@ export default function TripOngoing() {
     const { getTripById, completeTrip } = useApp()
     const t = getTripById(id)
     if (!t) return null
+
+    const driver = t.driver || {}
+    const from = t.from || t.ride?.from || '—'
+    const to = t.to || t.ride?.to || '—'
     const progress = Math.round((t.progress || 0.4) * 100)
 
     const finish = () => {
-        completeTrip(t.id)
-        navigate(`/trips/${t.id}/completed`)
+        completeTrip(t._id || t.id)
+        navigate(`/trips/${t._id || t.id}/completed`)
     }
 
     return (
@@ -31,10 +35,10 @@ export default function TripOngoing() {
                 <p className="text-xs text-muted mt-1.5">{progress}% of the trip completed</p>
             </div>
             <div className="rounded-2xl bg-surface border border-line p-4 shadow-[var(--shadow-card)] flex items-center gap-3">
-                <Avatar name={t.driver.name} size="md" />
+                <Avatar name={driver.name || 'Driver'} size="md" />
                 <div className="flex-1">
-                    <p className="font-semibold text-ink">{t.driver.name}</p>
-                    <p className="text-xs text-muted">{t.from} → {t.to}</p>
+                    <p className="font-semibold text-ink">{driver.name || 'Driver'}</p>
+                    <p className="text-xs text-muted">{from} → {to}</p>
                 </div>
                 <div className="flex gap-2">
                     <button className="tap h-9 w-9 rounded-full bg-brand-tint grid place-items-center"><MessageCircle size={16} className="text-brand" /></button>

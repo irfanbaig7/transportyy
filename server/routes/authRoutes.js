@@ -12,9 +12,24 @@ const signToken = (id) =>
 router.post('/signup', async (req, res) => {
   try {
     const { name, phone, email, password, city } = req.body;
+
     if (!name || !phone || !password) {
       return res.status(400).json({ error: 'name, phone and password are required.' });
     }
+    if (name.trim().length < 2) {
+      return res.status(400).json({ error: 'Name must be at least 2 characters.' });
+    }
+    // 10-digit Indian mobile number (frontend already strips spaces/country code)
+    if (!/^\d{10}$/.test(phone.trim())) {
+      return res.status(400).json({ error: 'Phone number must be exactly 10 digits.' });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+    }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      return res.status(400).json({ error: 'Please enter a valid email address.' });
+    }
+
     const exists = await User.findOne({ phone });
     if (exists) return res.status(409).json({ error: 'Phone number already registered.' });
 

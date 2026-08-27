@@ -6,12 +6,22 @@ import { useApp } from '../../context/AppContext'
 export default function DriverDashboard() {
     const { user, isAvailable, toggleAvailability, driverTrips, pendingRequests } = useApp()
 
+    if (!user) {
+        return (
+            <Screen header={<TopBar back={false} title="Dashboard" />} footer={<BottomNav />}>
+                <p className="text-sm text-muted mt-6">Loading your details…</p>
+            </Screen>
+        )
+    }
+
+    const firstName = user.name ? user.name.split(' ')[0] : 'there'
+
     return (
         <Screen
             header={
                 <TopBar
                     back={false}
-                    title={`Hi, ${user.name.split(' ')[0]} 👋`}
+                    title={`Hi, ${firstName} 👋`}
                     subtitle={isAvailable ? "You're currently available" : "You're offline"}
                     right={
                         <Link to="/notifications" className="tap h-9 w-9 grid place-items-center rounded-full hover:bg-black/5">
@@ -35,17 +45,29 @@ export default function DriverDashboard() {
                 )}
                 {driverTrips[0] && (
                     <p className="text-xs text-muted mt-1">
-                        {driverTrips[0].date}, {driverTrips[0].time} · {driverTrips[0].seatsTotal - driverTrips[0].seatsBooked} Seats Available
+                        {driverTrips[0].date}, {driverTrips[0].time} · {driverTrips[0].seatsAvailable ?? 0} Seats Available
                     </p>
+                )}
+                {!driverTrips.length && (
+                    <p className="text-xs text-muted">No rides posted yet. Tap + below to post one.</p>
                 )}
             </div>
 
             <div className="rounded-2xl bg-surface border border-line p-4 shadow-[var(--shadow-card)] mb-4 flex items-center gap-3">
-                <Avatar name={user.name} size="md" />
+                <Avatar name={user.name || '?'} size="md" />
                 <div className="flex-1">
                     <p className="text-xs font-semibold text-muted">Car Details</p>
-                    <p className="font-bold text-ink">{user.car.brand}</p>
-                    <p className="text-xs text-muted">{user.car.number} · {user.car.year} · {user.car.type}</p>
+                    {user.car?.brand ? (
+                        <>
+                            <p className="font-bold text-ink">{user.car.brand}</p>
+                            <p className="text-xs text-muted">{user.car.number || '—'} · {user.car.year || '—'} · {user.car.type || '—'}</p>
+                        </>
+                    ) : (
+                        <p className="text-sm text-muted">
+                            No car added yet.{' '}
+                            <Link to="/driver/car" className="text-brand font-semibold">Add now</Link>
+                        </p>
+                    )}
                 </div>
             </div>
 
@@ -60,15 +82,19 @@ export default function DriverDashboard() {
                 <p className="text-sm font-bold text-ink">Upcoming Trips</p>
                 <Link to="/trips" className="text-xs font-semibold text-brand">View All</Link>
             </div>
-            {driverTrips.map((t) => (
-                <Link key={t.id} to="/trips" className="tap block rounded-2xl bg-surface border border-line p-4 shadow-[var(--shadow-card)]">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-ink mb-1">
-                        <MapPin size={14} className="text-brand" /> {t.from} → {t.to}
-                    </div>
-                    <p className="text-xs text-muted">{t.date}, {t.time}</p>
-                    <Badge tone="green" className="mt-2">{t.seatsBooked} Seats Booked</Badge>
-                </Link>
-            ))}
+            {driverTrips.length ? (
+                driverTrips.map((t) => (
+                    <Link key={t._id || t.id} to="/trips" className="tap block rounded-2xl bg-surface border border-line p-4 shadow-[var(--shadow-card)]">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-ink mb-1">
+                            <MapPin size={14} className="text-brand" /> {t.from} → {t.to}
+                        </div>
+                        <p className="text-xs text-muted">{t.date}, {t.time}</p>
+                        <Badge tone="green" className="mt-2">{(t.seatsTotal - t.seatsAvailable) || 0} Seats Booked</Badge>
+                    </Link>
+                ))
+            ) : (
+                <p className="text-sm text-muted">No upcoming trips.</p>
+            )}
         </Screen>
     )
 }

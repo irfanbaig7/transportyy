@@ -21,6 +21,43 @@ router.post('/', protect, async (req, res) => {
   }
 });
 
+// GET /api/rides/popular/routes
+// Groups active rides by (from,to), keeps the cheapest price + how many rides
+// are live on that route, and sorts by the most recently posted ride on that
+// route first — so a route someone just posted jumps to the front, ahead of
+// routes that only have older listings. Capped to top 8 for the home screen.
+router.get('/popular/routes', async (req, res) => {
+  try {
+    const routes = await Ride.aggregate([
+      { $match: { status: 'active', seatsAvailable: { $gt: 0 } } },
+      { $sort: { createdAt: -1 } },
+      {
+        $group: {
+          _id: { from: '$from', to: '$to' },
+          price: { $min: '$price' },
+          count: { $sum: 1 },
+          lastPosted: { $first: '$createdAt' },
+        },
+      },
+      { $sort: { lastPosted: -1 } },
+      { $limit: 8 },
+      {
+        $project: {
+          _id: 0,
+          from: '$_id.from',
+          to: '$_id.to',
+          price: 1,
+          count: 1,
+          lastPosted: 1,
+        },
+      },
+    ]);
+    res.json({ routes });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/rides?from=&to=&date=  (Passenger Search screen)
 router.get('/', async (req, res) => {
   try {

@@ -10,6 +10,14 @@ export default function TripDetails() {
     const t = getTripById(id)
     if (!t) return null
 
+    const driver = t.driver || {}
+    const car = driver.car || {}
+    const from = t.from || t.ride?.from || '—'
+    const to = t.to || t.ride?.to || '—'
+    const via = t.via || t.ride?.via
+    const date = t.date || t.ride?.date
+    const time = t.time || t.ride?.time
+
     return (
         <Screen
             header={<TopBar title="Trip Details" />}
@@ -17,12 +25,12 @@ export default function TripDetails() {
                 <StickyCTA>
                     {t.status === 'upcoming' && (
                         <div className="flex gap-3">
-                            <Button variant="outline" full onClick={() => navigate(`/trips/${t.id}/cancel`)}>Cancel</Button>
-                            <Button full onClick={() => navigate(`/trips/${t.id}/ongoing`)}>Start Trip</Button>
+                            <Button variant="outline" full onClick={() => navigate(`/trips/${t._id || t.id}/cancel`)}>Cancel</Button>
+                            <Button full onClick={() => navigate(`/trips/${t._id || t.id}/ongoing`)}>Start Trip</Button>
                         </div>
                     )}
-                    {t.status === 'ongoing' && <Button full onClick={() => navigate(`/trips/${t.id}/ongoing`)}>Track Trip</Button>}
-                    {t.status === 'completed' && !t.rated && <Button full onClick={() => navigate(`/trips/${t.id}/rate`)}>Rate this Trip</Button>}
+                    {t.status === 'ongoing' && <Button full onClick={() => navigate(`/trips/${t._id || t.id}/ongoing`)}>Track Trip</Button>}
+                    {t.status === 'completed' && !t.rated && <Button full onClick={() => navigate(`/trips/${t._id || t.id}/rate`)}>Rate this Trip</Button>}
                 </StickyCTA>
             }
         >
@@ -34,18 +42,18 @@ export default function TripDetails() {
             </div>
 
             <div className="rounded-2xl bg-surface border border-line p-4 shadow-[var(--shadow-card)] mb-4">
-                <RouteLine from={t.from} to={t.to} via={t.via} />
+                <RouteLine from={from} to={to} via={via} />
                 <div className="grid grid-cols-2 gap-3 pt-3 mt-3 border-t border-line text-sm">
-                    <div><p className="text-xs text-muted">Date</p><p className="font-semibold text-ink">{t.date}</p></div>
-                    <div><p className="text-xs text-muted">Time</p><p className="font-semibold text-ink">{t.time}</p></div>
+                    <div><p className="text-xs text-muted">Date</p><p className="font-semibold text-ink">{date || '—'}</p></div>
+                    <div><p className="text-xs text-muted">Time</p><p className="font-semibold text-ink">{time || '—'}</p></div>
                 </div>
             </div>
 
             <div className="rounded-2xl bg-surface border border-line p-4 shadow-[var(--shadow-card)] mb-4 flex items-center gap-3">
-                <Avatar name={t.driver.name} size="md" />
+                <Avatar name={driver.name || 'Driver'} size="md" />
                 <div className="flex-1">
-                    <p className="font-semibold text-ink">{t.driver.name} ★ {t.driver.rating}</p>
-                    <p className="text-xs text-muted">{t.car.brand} · {t.car.number}</p>
+                    <p className="font-semibold text-ink">{driver.name || 'Driver'} {driver.rating ? `★ ${driver.rating}` : ''}</p>
+                    <p className="text-xs text-muted">{car.brand || 'Car'} {car.number ? `· ${car.number}` : ''}</p>
                 </div>
                 <div className="flex gap-2">
                     <Link to="/messages" className="tap h-9 w-9 rounded-full bg-brand-tint grid place-items-center"><MessageCircle size={16} className="text-brand" /></Link>
@@ -57,7 +65,7 @@ export default function TripDetails() {
                 <p className="text-sm font-bold text-ink mb-3">Price Details</p>
                 <div className="space-y-2 text-sm">
                     <div className="flex justify-between"><span className="text-muted">₹{t.pricePerSeat} x {t.seats} Seat(s)</span><span className="text-ink">₹{t.pricePerSeat * t.seats}</span></div>
-                    <div className="flex justify-between"><span className="text-muted">Platform Fee</span><span className="text-ink">₹{t.fee}</span></div>
+                    <div className="flex justify-between"><span className="text-muted">Platform Fee</span><span className="text-ink">₹{t.platformFee ?? t.fee ?? 0}</span></div>
                     <div className="flex justify-between pt-2 border-t border-line font-bold text-ink"><span>Total</span><span>₹{t.total}</span></div>
                 </div>
             </div>

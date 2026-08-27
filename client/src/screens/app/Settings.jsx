@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { Screen, TopBar, Toggle } from '../../components'
+import { useApp } from '../../context/AppContext'
 
 export default function Settings() {
+    const { darkMode, setDarkMode } = useApp()
     const [push, setPush] = useState(true)
     const [email, setEmail] = useState(true)
     const [locationShare, setLocationShare] = useState(true)
-    const [darkMode, setDarkMode] = useState(false)
 
     return (
         <Screen header={<TopBar title="Settings" />}>

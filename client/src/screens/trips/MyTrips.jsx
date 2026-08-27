@@ -27,15 +27,21 @@ export default function MyTrips() {
             </div>
             <div className="flex-1 overflow-y-auto no-scrollbar px-5 pb-4 space-y-3">
                 {list.length ? (
-                    list.map((t) => (
-                        <Link key={t.id} to={`/trips/${t.id}`} className="tap block rounded-2xl bg-surface border border-line p-4 shadow-[var(--shadow-card)]">
-                            <div className="flex items-center justify-between mb-2">
-                                <RouteLine compact from={t.from} to={t.to} />
-                                <Badge tone={t.status === 'completed' ? 'green' : t.status === 'cancelled' ? 'red' : 'blue'}>{t.status}</Badge>
-                            </div>
-                            <p className="text-xs text-muted">{t.date} · {t.time} · {t.driver.name}</p>
-                        </Link>
-                    ))
+                    list.map((t) => {
+                        const from = t.from || t.ride?.from || '—'
+                        const to = t.to || t.ride?.to || '—'
+                        const date = t.date || t.ride?.date
+                        const time = t.time || t.ride?.time
+                        return (
+                            <Link key={t._id || t.id} to={`/trips/${t._id || t.id}`} className="tap block rounded-2xl bg-surface border border-line p-4 shadow-[var(--shadow-card)]">
+                                <div className="flex items-center justify-between mb-2">
+                                    <RouteLine compact from={from} to={to} />
+                                    <Badge tone={t.status === 'completed' ? 'green' : t.status === 'cancelled' ? 'red' : 'blue'}>{t.status}</Badge>
+                                </div>
+                                <p className="text-xs text-muted">{date} {time ? `· ${time}` : ''} · {t.driver?.name || 'Driver'}</p>
+                            </Link>
+                        )
+                    })
                 ) : (
                     <EmptyState icon={RouteIcon} title="No trips here" message="Trips in this category will show up here." />
                 )}

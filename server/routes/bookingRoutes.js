@@ -46,7 +46,13 @@ router.post('/', protect, async (req, res) => {
       body: `${req.user.name} booked ${seats} seat(s), ${ride.from} → ${ride.to}.`,
     });
 
-    res.status(201).json({ booking });
+    // Populate driver (with car) and ride before sending back,
+    // so the frontend has everything it needs (name, car, route) right away.
+    const populated = await Booking.findById(booking._id)
+      .populate('driver', 'name rating car')
+      .populate('ride');
+
+    res.status(201).json({ booking: populated });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

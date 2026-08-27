@@ -3,7 +3,10 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const http = require('http');
+const { Server } = require('socket.io');
 const connectDB = require('./config/db');
+const initSocket = require('./socket');
 
 const app = express();
 
@@ -44,9 +47,17 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
+// ---- HTTP server + Socket.io (real-time chat & call signaling) ----
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: { origin: '*' },
+});
+initSocket(io);
+
 // ---- Start server ----
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`\n🚀 Server running on http://localhost:${PORT}`);
-  console.log(`   Health check: http://localhost:${PORT}/api/health\n`);
-});
+  console.log(`   Health check: http://localhost:${PORT}/api/health`);
+  console.log(`   Socket.io ready for real-time chat & calls\n`);
+}); 

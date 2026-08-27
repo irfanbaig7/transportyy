@@ -13,8 +13,12 @@ export default function RateReview() {
     const [text, setText] = useState('')
     if (!t) return null
 
+    const driver = t.driver || {}
+    const from = t.from || t.ride?.from || '—'
+    const to = t.to || t.ride?.to || '—'
+
     const submit = () => {
-        rateTrip(t.id, rating, text)
+        rateTrip(t._id || t.id, rating, text)
         navigate('/trips')
     }
 
@@ -24,9 +28,9 @@ export default function RateReview() {
             footer={<StickyCTA><Button full onClick={submit}>Submit Review</Button></StickyCTA>}
         >
             <div className="flex flex-col items-center text-center mb-6">
-                <Avatar name={t.driver.name} size="xl" />
-                <p className="font-bold text-ink mt-3">{t.driver.name}</p>
-                <p className="text-xs text-muted">{t.from} → {t.to}</p>
+                <Avatar name={driver.name || 'Driver'} size="xl" />
+                <p className="font-bold text-ink mt-3">{driver.name || 'Driver'}</p>
+                <p className="text-xs text-muted">{from} → {to}</p>
             </div>
             <div className="flex items-center justify-center gap-2 mb-6">
                 {[1, 2, 3, 4, 5].map((n) => (

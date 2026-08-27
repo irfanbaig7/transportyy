@@ -44,6 +44,9 @@ export const api = {
         const qs = new URLSearchParams(params).toString()
         return request(`/rides${qs ? `?${qs}` : ''}`, { auth: false })
     },
+
+    popularRoutes: () => request('/rides/popular/routes', { auth: false }),
+
     getRide: (id) => request(`/rides/${id}`, { auth: false }),
     postRide: (payload) => request('/rides', { method: 'POST', body: payload }),
     myRides: () => request('/rides/mine'),

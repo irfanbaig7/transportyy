@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Device from './components/Device'
+import IncomingCallSheet from './components/IncomingCallSheet'
 
 // Onboarding + Auth
 import Onboarding from './screens/Onboarding'
@@ -114,6 +115,7 @@ export default function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <IncomingCallSheet />
     </Device>
   )
 }

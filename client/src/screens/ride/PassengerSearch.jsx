@@ -1,23 +1,70 @@
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { MapPin, SlidersHorizontal, Users } from 'lucide-react'
-import { Screen, TopBar, RideCard, EmptyState } from '../../components'
+import { MapPin, SlidersHorizontal, Users, Search } from 'lucide-react'
+import { Screen, TopBar, RideCard, EmptyState, Spinner } from '../../components'
 import { useApp } from '../../context/AppContext'
 
 export default function PassengerSearch() {
     const navigate = useNavigate()
-    const { search, rides } = useApp()
+    const { search, setSearch, rides, searchRides, loading } = useApp()
+    const [editing, setEditing] = useState(!search.from && !search.to)
+    const [form, setForm] = useState({ from: search.from || '', to: search.to || '' })
+
+    // Load rides on mount, and whenever the confirmed search changes.
+    useEffect(() => {
+        searchRides({ from: search.from, to: search.to })
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [search.from, search.to])
+
+    const runSearch = () => {
+        setSearch({ from: form.from, to: form.to })
+        setEditing(false)
+    }
 
     return (
         <Screen header={<TopBar title="Find a Ride" />} padded={false}>
             <div className="px-5 pt-4 pb-3 bg-surface border-b border-line">
-                <div className="flex items-center justify-between rounded-xl border border-line px-3.5 py-2.5">
-                    <div className="flex items-center gap-1.5 text-sm font-semibold text-ink">
-                        <MapPin size={15} className="text-brand" />
-                        {search.from} → {search.to}
-                        <span className="text-muted font-normal">· {search.passengers} Passenger</span>
+                {editing ? (
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2 rounded-xl border border-line px-3.5 py-2.5">
+                            <MapPin size={15} className="text-brand shrink-0" />
+                            <input
+                                value={form.from}
+                                onChange={(e) => setForm((f) => ({ ...f, from: e.target.value }))}
+                                placeholder="From (e.g. Pune) — leave blank for all"
+                                className="flex-1 min-w-0 bg-transparent outline-none text-sm text-ink placeholder:text-muted"
+                            />
+                        </div>
+                        <div className="flex items-center gap-2 rounded-xl border border-line px-3.5 py-2.5">
+                            <MapPin size={15} className="text-brand shrink-0" />
+                            <input
+                                value={form.to}
+                                onChange={(e) => setForm((f) => ({ ...f, to: e.target.value }))}
+                                placeholder="To (e.g. Nagpur) — leave blank for all"
+                                className="flex-1 min-w-0 bg-transparent outline-none text-sm text-ink placeholder:text-muted"
+                            />
+                        </div>
+                        <button
+                            onClick={runSearch}
+                            className="tap w-full h-11 rounded-xl bg-brand text-white text-sm font-semibold flex items-center justify-center gap-2"
+                        >
+                            <Search size={16} /> Search Rides
+                        </button>
                     </div>
-                    <button onClick={() => navigate(-1)} className="tap text-xs font-semibold text-brand">Edit Search</button>
-                </div>
+                ) : (
+                    <div className="flex items-center justify-between rounded-xl border border-line px-3.5 py-2.5">
+                        <div className="flex items-center gap-1.5 text-sm font-semibold text-ink truncate">
+                            <MapPin size={15} className="text-brand shrink-0" />
+                            {search.from || 'Anywhere'} → {search.to || 'Anywhere'}
+                        </div>
+                        <button
+                            onClick={() => { setForm({ from: search.from, to: search.to }); setEditing(true) }}
+                            className="tap text-xs font-semibold text-brand shrink-0 ml-2"
+                        >
+                            Edit Search
+                        </button>
+                    </div>
+                )}
             </div>
 
             <div className="px-5 py-4 space-y-3 overflow-y-auto no-scrollbar flex-1">
@@ -27,10 +74,17 @@ export default function PassengerSearch() {
                         <SlidersHorizontal size={14} /> Filters
                     </Link>
                 </div>
-                {rides.length ? (
-                    rides.map((r) => <RideCard key={r.id} ride={r} to={`/ride/${r.id}`} />)
+
+                {loading ? (
+                    <div className="flex justify-center py-10"><Spinner size={28} /></div>
+                ) : rides.length ? (
+                    rides.map((r) => <RideCard key={r._id || r.id} ride={r} to={`/ride/${r._id || r.id}`} />)
                 ) : (
-                    <EmptyState icon={Users} title="No rides found" message="Try adjusting your search or filters." />
+                    <EmptyState
+                        icon={Users}
+                        title="No rides found"
+                        message="Try a different route, or search with blank fields to see all rides."
+                    />
                 )}
             </div>
         </Screen>
