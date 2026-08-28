@@ -52,6 +52,13 @@ router.post('/', protect, async (req, res) => {
       .populate('driver', 'name rating car')
       .populate('ride');
 
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user:${ride.driver}`).emit('booking:new', populated);
+      io.emit('ride:updated', { rideId: ride._id.toString(), seatsAvailable: ride.seatsAvailable });
+    }
+
+
     res.status(201).json({ booking: populated });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -114,7 +121,13 @@ router.patch('/:id/accept', protect, async (req, res) => {
     { status: 'upcoming' },
     { new: true }
   );
-  if (!booking) return res.status(404).json({ error: 'Booking not found.' });
+  if
+    (!booking) return res.status(404).json({ error: 'Booking not found.' });
+
+  const io = req.app.get('io');
+  if (io) io.to(`user:${booking.passenger}`).emit('booking:updated', booking);
+
+
   res.json({ booking });
 });
 
@@ -129,7 +142,13 @@ router.patch('/:id/reject', protect, async (req, res) => {
     booking.cancelReason = 'Rejected by driver';
     await booking.save();
 
-    await Ride.findByIdAndUpdate(booking.ride, { $inc: { seatsAvailable: booking.seats } });
+    const updatedRide = await Ride.findByIdAndUpdate(booking.ride, { $inc: { seatsAvailable: booking.seats } }, { new: true });
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user:${booking.passenger}`).emit('booking:updated', booking);
+      io.emit('ride:updated', { rideId: booking.ride.toString(), seatsAvailable: updatedRide.seatsAvailable });
+    }
 
     res.json({ booking });
   } catch (err) {
@@ -149,9 +168,21 @@ router.patch('/:id/cancel', protect, async (req, res) => {
     booking.cancelReason = req.body.reason || '';
     await booking.save();
 
-    await Ride.findByIdAndUpdate(booking.ride, { $inc: { seatsAvailable: booking.seats } });
+    const updatedRide = await Ride.findByIdAndUpdate(
+      booking.ride,
+      { $inc: { seatsAvailable: booking.seats } },
+      { new: true }
+    );
+
+    // 👇 ADD THIS
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user:${booking.driver}`).emit('booking:updated', booking);
+      io.emit('ride:updated', { rideId: booking.ride.toString(), seatsAvailable: updatedRide.seatsAvailable });
+    }
 
     res.json({ booking });
+
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -160,6 +191,13 @@ router.patch('/:id/cancel', protect, async (req, res) => {
 // PATCH /api/bookings/:id/start  (Trip Ongoing screen)
 router.patch('/:id/start', protect, async (req, res) => {
   const booking = await Booking.findByIdAndUpdate(req.params.id, { status: 'ongoing', progress: 0.1 }, { new: true });
+
+  const io = req.app.get('io');
+  if (io) {
+    io.to(`user:${booking.driver}`).emit('booking:updated', booking);
+    io.to(`user:${booking.passenger}`).emit('booking:updated', booking);
+  }
+
   res.json({ booking });
 });
 
@@ -171,6 +209,13 @@ router.patch('/:id/complete', protect, async (req, res) => {
     { new: true }
   );
   await require('../models/User').findByIdAndUpdate(booking.passenger, { $inc: { tripsCount: 1 } });
+
+  const io = req.app.get('io');
+  if (io) {
+    io.to(`user:${booking.driver}`).emit('booking:updated', booking);
+    io.to(`user:${booking.passenger}`).emit('booking:updated', booking);
+  }
+
   res.json({ booking });
 });
 
@@ -189,6 +234,12 @@ router.patch('/:id/rate', protect, async (req, res) => {
   driver.rating = ((driver.rating * driver.ratingCount) + rating) / newCount;
   driver.ratingCount = newCount;
   await driver.save();
+
+  const io = req.app.get('io');
+  if (io) {
+    io.to(`user:${booking.driver}`).emit('booking:updated', booking);
+    io.to(`user:${booking.passenger}`).emit('booking:updated', booking);
+  }
 
   res.json({ booking });
 });

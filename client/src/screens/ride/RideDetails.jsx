@@ -8,7 +8,20 @@ import { api } from '../../api/client'
 export default function RideDetails() {
     const { id } = useParams()
     const navigate = useNavigate()
-    const { getRideById } = useApp()
+
+    const { getRideById, socket } = useApp()   // socket bhi destructure karo
+
+    // existing useEffect ke baad ADD KARO:
+    useEffect(() => {
+        if (!socket || !ride) return
+        const onUpdate = (payload) => {
+            if (String(payload.rideId) === String(ride._id || ride.id)) {
+                api.getRide(id).then((d) => setRide(d.ride)).catch(() => { })
+            }
+        }
+        socket.on('ride:updated', onUpdate)
+        return () => socket.off('ride:updated', onUpdate)
+    }, [socket, ride, id])
 
     const [ride, setRide] = useState(() => getRideById(id) || null)
     const [loading, setLoading] = useState(!ride)
@@ -84,8 +97,12 @@ export default function RideDetails() {
                         <span className="text-xs text-muted">Total</span>
                         <span className="text-lg font-extrabold text-ink">₹{total}</span>
                     </div>
-                    <Button full onClick={() => navigate(`/booking/payment/${ride._id || ride.id}`, { state: { seats } })}>
-                        Book Seat
+                    <Button
+                        full
+                        disabled={(ride.seatsAvailable ?? 0) <= 0}
+                        onClick={() => navigate(`/booking/payment/${ride._id || ride.id}`, { state: { seats } })}
+                    >
+                        {(ride.seatsAvailable ?? 0) <= 0 ? 'Fully Booked' : 'Book Seat'}
                     </Button>
                 </StickyCTA>
             }

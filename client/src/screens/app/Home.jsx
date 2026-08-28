@@ -7,13 +7,22 @@ import { api } from '../../api/client'
 
 export default function Home() {
     const navigate = useNavigate()
-    const { user, unreadNotifications, setSearch, refreshNotifications } = useApp()
+    const { user, unreadNotifications, setSearch, refreshNotifications, socket } = useApp()
 
+    // existing popularRoutes useEffect ke just baad ADD KARO:
     useEffect(() => {
-        refreshNotifications()
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
-    
+        if (!socket) return
+        const refetch = () => {
+            api.popularRoutes().then((d) => setPopular(d.routes || [])).catch(() => { })
+        }
+        socket.on('ride:posted', refetch)
+        socket.on('ride:updated', refetch)
+        return () => {
+            socket.off('ride:posted', refetch)
+            socket.off('ride:updated', refetch)
+        }
+    }, [socket])
+
     const [popular, setPopular] = useState([])
     const [loadingRoutes, setLoadingRoutes] = useState(true)
     const scrollerRef = useRef(null)

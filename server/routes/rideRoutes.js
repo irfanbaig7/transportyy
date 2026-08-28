@@ -15,6 +15,10 @@ router.post('/', protect, async (req, res) => {
       seatsAvailable: seats,
       price,
     });
+
+    const io = req.app.get('io');
+    if (io) io.emit('ride:posted', ride);
+
     res.status(201).json({ ride });
   } catch (err) {
     res.status(400).json({ error: err.message });

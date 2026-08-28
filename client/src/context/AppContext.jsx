@@ -126,6 +126,18 @@ export function AppProvider({ children }) {
       setIncomingCall((c) => (c && c.fromUserId === fromUserId ? null : c))
     }
 
+    const onBookingNew = () => {
+      refreshRequests()
+      refreshMyRides()
+      refreshNotifications()
+    }
+    const onBookingUpdated = () => {
+      refreshMyTrips()
+      refreshRequests()
+      refreshMyRides()
+      refreshNotifications()
+    }
+
     socket.on('chat:message', onChatMessage)
     socket.on('call:incoming', onIncomingCall)
     socket.on('call:ended', onCallEnded)
@@ -222,7 +234,7 @@ export function AppProvider({ children }) {
 
     acceptRequest: async (id) => { await api.acceptBooking(id); refreshRequests(); refreshMyRides() },
     rejectRequest: async (id) => { await api.rejectBooking(id); refreshRequests(); refreshMyRides() },
-    
+
     markAllNotificationsRead: async () => {
       setNotifications((n) => n.map((x) => ({ ...x, unread: false })))
       await api.markAllRead()

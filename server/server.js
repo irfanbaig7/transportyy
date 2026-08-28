@@ -53,6 +53,7 @@ const io = new Server(server, {
   cors: { origin: '*' },
 });
 initSocket(io);
+app.set('io', io);  
 
 // ---- Start server ----
 const PORT = process.env.PORT || 5000;

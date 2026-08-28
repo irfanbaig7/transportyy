@@ -12,7 +12,22 @@ function parseTimeToday(timeStr) {
 
 export default function PassengerSearch() {
     const navigate = useNavigate()
-    const { search, setSearch, rides, searchRides, loading, filters } = useApp()
+    
+    const { search, setSearch, rides, searchRides, loading, filters, socket } = useApp()
+
+    // existing searchRides useEffect ke baad ADD KARO:
+    useEffect(() => {
+        if (!socket) return
+        const refetch = () => searchRides({ from: search.from, to: search.to })
+        socket.on('ride:posted', refetch)
+        socket.on('ride:updated', refetch)
+        return () => {
+            socket.off('ride:posted', refetch)
+            socket.off('ride:updated', refetch)
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [socket, search.from, search.to])
+
     const [editing, setEditing] = useState(!search.from && !search.to)
     const [form, setForm] = useState({ from: search.from || '', to: search.to || '' })
 
