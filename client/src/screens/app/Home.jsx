@@ -7,8 +7,13 @@ import { api } from '../../api/client'
 
 export default function Home() {
     const navigate = useNavigate()
-    const { user, unreadNotifications, setSearch } = useApp()
+    const { user, unreadNotifications, setSearch, refreshNotifications } = useApp()
 
+    useEffect(() => {
+        refreshNotifications()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+    
     const [popular, setPopular] = useState([])
     const [loadingRoutes, setLoadingRoutes] = useState(true)
     const scrollerRef = useRef(null)

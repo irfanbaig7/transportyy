@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Route as RouteIcon } from 'lucide-react'
 import { Screen, TopBar, BottomNav, RouteLine, Badge, EmptyState } from '../../components'
@@ -8,7 +8,12 @@ const TABS = ['upcoming', 'ongoing', 'completed', 'cancelled']
 
 export default function MyTrips() {
     const [tab, setTab] = useState('upcoming')
-    const { trips } = useApp()
+    const { trips, refreshMyTrips } = useApp()
+
+    useEffect(() => {
+        refreshMyTrips()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
     const list = trips.filter((t) => t.status === tab)
 
     return (

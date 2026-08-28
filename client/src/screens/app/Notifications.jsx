@@ -6,9 +6,13 @@ import { useApp } from '../../context/AppContext'
 const ICONS = { booking: Bell, payment: IndianRupee, trip: RouteIcon, rating: Star, promo: Gift }
 
 export default function Notifications() {
-    const { notifications, markAllNotificationsRead } = useApp()
-    useEffect(() => { markAllNotificationsRead() }, [])
-
+    const { notifications, markAllNotificationsRead, refreshNotifications } = useApp()
+    useEffect(() => {
+        refreshNotifications()
+        markAllNotificationsRead()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+    
     if (!notifications.length) {
         return (
             <Screen header={<TopBar title="Notifications" />}>

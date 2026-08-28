@@ -220,9 +220,9 @@ export function AppProvider({ children }) {
     completeTrip: async (tripId) => { await api.completeBooking(tripId); refreshMyTrips() },
     rateTrip: async (tripId, rating, text = '') => { await api.rateBooking(tripId, rating, text); refreshMyTrips() },
 
-    acceptRequest: async (id) => { await api.acceptBooking(id); refreshRequests() },
-    rejectRequest: async (id) => { await api.rejectBooking(id); refreshRequests() },
-
+    acceptRequest: async (id) => { await api.acceptBooking(id); refreshRequests(); refreshMyRides() },
+    rejectRequest: async (id) => { await api.rejectBooking(id); refreshRequests(); refreshMyRides() },
+    
     markAllNotificationsRead: async () => {
       setNotifications((n) => n.map((x) => ({ ...x, unread: false })))
       await api.markAllRead()

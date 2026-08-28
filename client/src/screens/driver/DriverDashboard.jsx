@@ -1,10 +1,19 @@
 import { Link } from 'react-router-dom'
+import { useEffect } from 'react'
 import { Bell, Route as RouteIcon, Wallet, CalendarCheck, Inbox, MapPin } from 'lucide-react'
 import { Screen, TopBar, BottomNav, Avatar, Badge, Toggle } from '../../components'
 import { useApp } from '../../context/AppContext'
 
 export default function DriverDashboard() {
-    const { user, isAvailable, toggleAvailability, driverTrips, pendingRequests } = useApp()
+    const { user, isAvailable, toggleAvailability, driverTrips, pendingRequests, refreshMyRides, refreshRequests } = useApp()
+
+    // Screen khulte hi fresh seats/requests mangwao — sirf login ke waqt
+    // fetch hone se yeh values stale reh jaate the bina reload ke.
+    useEffect(() => {
+        refreshMyRides()
+        refreshRequests()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
 
     if (!user) {
         return (
@@ -84,10 +93,9 @@ export default function DriverDashboard() {
             </div>
             {driverTrips.length ? (
                 driverTrips.map((t) => (
-                    <Link key={t._id || t.id} to="/trips" className="tap block rounded-2xl bg-surface border border-line p-4 shadow-[var(--shadow-card)]">
-                        <div className="flex items-center gap-2 text-sm font-semibold text-ink mb-1">
-                            <MapPin size={14} className="text-brand" /> {t.from} → {t.to}
-                        </div>
+                    <Link key={t._id || t.id} to="/driver/requests" className="tap block rounded-2xl bg-surface border border-line p-4 shadow-(--shadow-card)">                        <div className="flex items-center gap-2 text-sm font-semibold text-ink mb-1">
+                        <MapPin size={14} className="text-brand" /> {t.from} → {t.to}
+                    </div>
                         <p className="text-xs text-muted">{t.date}, {t.time}</p>
                         <Badge tone="green" className="mt-2">{(t.seatsTotal - t.seatsAvailable) || 0} Seats Booked</Badge>
                     </Link>

@@ -1,9 +1,15 @@
+import { useEffect } from 'react'
 import { Screen, TopBar, Avatar, Badge, Button, EmptyState } from '../../components'
 import { useApp } from '../../context/AppContext'
 import { Inbox } from 'lucide-react'
 
 export default function BookingRequests() {
-    const { requests, acceptRequest, rejectRequest } = useApp()
+    const { requests, acceptRequest, rejectRequest, refreshRequests } = useApp()
+
+    useEffect(() => {
+        refreshRequests()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
 
     if (!requests.length) {
         return (
