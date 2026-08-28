@@ -61,7 +61,7 @@ export default function ChatThread() {
   }
 
   const goCall = () => {
-    navigate(`/call/${chat._id || chat.id}`, { state: { role: 'caller', otherUserId, otherUserName: otherName } })
+    navigate(`/call/${chat._id || chat.id}`, { state: { role: 'caller', otherUserId: otherId, otherUserName: otherName } })
   }
 
   const messages = chat.messages || []

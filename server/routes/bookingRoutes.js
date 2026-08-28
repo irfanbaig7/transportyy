@@ -85,6 +85,17 @@ router.get('/requests', protect, async (req, res) => {
   }
 });
 
+// GET /api/bookings/earnings  (Driver — completed bookings where I was the driver)
+// Must stay ABOVE the "/:id" route below, otherwise "earnings" would be treated as an :id.
+router.get('/earnings', protect, async (req, res) => {   // 👈 YE BLOCK YAHA UPAR LAO
+  const bookings = await Booking.find({ driver: req.user._id, status: 'completed' })
+    .populate('passenger', 'name')
+    .populate('ride')
+    .sort({ createdAt: -1 });
+  res.json({ bookings });
+});
+
+
 // GET /api/bookings/:id  (Trip Details screen)
 router.get('/:id', protect, async (req, res) => {
   try {
@@ -182,19 +193,6 @@ router.patch('/:id/rate', protect, async (req, res) => {
   res.json({ booking });
 });
 
-// GET /api/bookings/earnings  (Driver — completed bookings where I was the driver)
-// Must stay ABOVE the "/:id" route below, otherwise "earnings" would be treated as an :id.
-router.get('/earnings', protect, async (req, res) => {
-  try {
-    const bookings = await Booking.find({ driver: req.user._id, status: 'completed' })
-      .populate('passenger', 'name')
-      .populate('ride')
-      .sort({ createdAt: -1 });
-    res.json({ bookings });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
 
 // GET /api/bookings/:id  (Trip Details screen)
 

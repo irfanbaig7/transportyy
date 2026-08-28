@@ -55,6 +55,7 @@ export const api = {
     createBooking: (payload) => request('/bookings', { method: 'POST', body: payload }),
     myBookings: (status) => request(`/bookings/mine${status ? `?status=${status}` : ''}`),
     requests: () => request('/bookings/requests'),
+    driverEarnings: () => request('/bookings/earnings'),
     getBooking: (id) => request(`/bookings/${id}`),
     acceptBooking: (id) => request(`/bookings/${id}/accept`, { method: 'PATCH' }),
     rejectBooking: (id) => request(`/bookings/${id}/reject`, { method: 'PATCH' }),

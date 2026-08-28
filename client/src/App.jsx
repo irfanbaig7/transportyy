@@ -55,21 +55,34 @@ import Menu from './screens/app/Menu'
 import Settings from './screens/app/Settings'
 import Help from './screens/app/Help'
 import StatesGallery from './screens/app/StatesGallery'
+import { useApp } from './context/AppContext'
+
+// Agar user pehle se logged in hai, to Onboarding/Login/Signup screens
+// dobara mat dikhao — seedha uske role ke hisab se home pe bhej do.
+function RedirectIfAuthed({ children }) {
+  const { isAuthed, role } = useApp()
+  if (isAuthed) {
+    return <Navigate to={role === 'driver' ? '/driver/dashboard' : '/home'} replace />
+  }
+  return children
+}
 
 export default function App() {
   return (
     <Device>
       <Routes>
         {/* Public — onboarding + auth */}
-        <Route path="/" element={<Onboarding />} />
-        <Route path="/onboarding" element={<Onboarding />} />
-        <Route path="/role" element={<ChooseRole />} />
-        <Route path="/get-started" element={<GetStarted />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<CreateAccount />} />
+        <Route path="/" element={<RedirectIfAuthed><Onboarding /></RedirectIfAuthed>} />
+        <Route path="/onboarding" element={<RedirectIfAuthed><Onboarding /></RedirectIfAuthed>} />
+        <Route path="/role" element={<RedirectIfAuthed><ChooseRole /></RedirectIfAuthed>} />
+        <Route path="/get-started" element={<RedirectIfAuthed><GetStarted /></RedirectIfAuthed>} />
+        <Route path="/login" element={<RedirectIfAuthed><Login /></RedirectIfAuthed>} />
+        <Route path="/signup" element={<RedirectIfAuthed><CreateAccount /></RedirectIfAuthed>} />
         <Route path="/forgot" element={<ForgotPassword />} />
         <Route path="/otp" element={<OtpVerify />} />
         <Route path="/reset" element={<ResetPassword />} />
+
+        
 
         {/* Everything below requires a logged-in session */}
         <Route element={<RequireAuth />}>
