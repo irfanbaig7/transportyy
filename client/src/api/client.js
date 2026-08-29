@@ -54,14 +54,15 @@ export const api = {
     // ---- Bookings ----
     createBooking: (payload) => request('/bookings', { method: 'POST', body: payload }),
     myBookings: (status) => request(`/bookings/mine${status ? `?status=${status}` : ''}`),
+    driverTrips: () => request('/bookings/driver-trips'),
+    getRideBookings: (rideId) => request(`/bookings/ride/${rideId}`),
     requests: () => request('/bookings/requests'),
     driverEarnings: () => request('/bookings/earnings'),
     getBooking: (id) => request(`/bookings/${id}`),
     acceptBooking: (id) => request(`/bookings/${id}/accept`, { method: 'PATCH' }),
     rejectBooking: (id) => request(`/bookings/${id}/reject`, { method: 'PATCH' }),
     cancelBooking: (id, reason) => request(`/bookings/${id}/cancel`, { method: 'PATCH', body: { reason } }),
-    startBooking: (id) => request(`/bookings/${id}/start`, { method: 'PATCH' }),
-    completeBooking: (id) => request(`/bookings/${id}/complete`, { method: 'PATCH' }),
+    startBooking: (id, otp) => request(`/bookings/${id}/start`, { method: 'PATCH', body: { otp } }), completeBooking: (id) => request(`/bookings/${id}/complete`, { method: 'PATCH' }),
     rateBooking: (id, rating, text) => request(`/bookings/${id}/rate`, { method: 'PATCH', body: { rating, text } }),
 
     // ---- Notifications ----

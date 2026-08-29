@@ -1,19 +1,35 @@
 import { useParams, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import { CheckCircle2 } from 'lucide-react'
-import { Button, RouteLine } from '../../components'
+import { Button, RouteLine, Screen, TopBar, Spinner } from '../../components'
 import { useApp } from '../../context/AppContext'
+import { api } from '../../api/client'
 
 export default function TripCompleted() {
     const { id } = useParams()
     const navigate = useNavigate()
-    const { getTripById } = useApp()
-    const t = getTripById(id)
-    if (!t) return null
+    const { user } = useApp()
+    const [booking, setBooking] = useState(null)
+    const [loading, setLoading] = useState(true)
 
-    const from = t.from || t.ride?.from || '—'
-    const to = t.to || t.ride?.to || '—'
-    const date = t.date || t.ride?.date
-    const time = t.time || t.ride?.time
+    useEffect(() => {
+        api.getBooking(id)
+            .then((d) => setBooking(d.booking))
+            .catch(() => setBooking(null))
+            .finally(() => setLoading(false))
+    }, [id])
+
+    if (loading) {
+        return (
+            <Screen header={<TopBar title="Trip Completed" />}>
+                <div className="flex justify-center py-16"><Spinner size={30} /></div>
+            </Screen>
+        )
+    }
+    if (!booking || !user) return null
+
+    const isDriver = String(booking.driver?._id) === String(user._id)
+    const ride = booking.ride || {}
 
     return (
         <div className="flex flex-col h-full px-6 pt-10 pb-6">
@@ -25,12 +41,12 @@ export default function TripCompleted() {
                 <p className="text-sm text-muted mt-1">Hope you had a safe journey.</p>
             </div>
             <div className="rounded-2xl bg-surface border border-line p-4 shadow-[var(--shadow-card)] mb-4">
-                <RouteLine compact from={from} to={to} />
-                <p className="text-xs text-muted mt-2">{date} {time ? `· ${time}` : ''} · Total Paid ₹{t.total}</p>
+                <RouteLine compact from={ride.from || '—'} to={ride.to || '—'} />
+                <p className="text-xs text-muted mt-2">{ride.date} {ride.time ? `· ${ride.time}` : ''} · Total ₹{booking.total}</p>
             </div>
             <div className="flex-1" />
             <div className="space-y-3">
-                {!t.rated && <Button full onClick={() => navigate(`/trips/${t._id || t.id}/rate`)}>Rate this Trip</Button>}
+                {!isDriver && !booking.rated && <Button full onClick={() => navigate(`/trips/${booking._id}/rate`)}>Rate this Trip</Button>}
                 <Button full variant="outline" to="/trips">Back to Trips</Button>
             </div>
         </div>

@@ -8,10 +8,26 @@ import { api } from '../../api/client'
 export default function RideDetails() {
     const { id } = useParams()
     const navigate = useNavigate()
+    const { getRideById, socket } = useApp()
 
-    const { getRideById, socket } = useApp()   // socket bhi destructure karo
+    // 👇 State pehle declare karo
+    const [ride, setRide] = useState(() => getRideById(id) || null)
+    const [loading, setLoading] = useState(!ride)
+    const [seats, setSeats] = useState(1)
+    const [messaging, setMessaging] = useState(false)
+    const [msgErr, setMsgErr] = useState('')
 
-    // existing useEffect ke baad ADD KARO:
+    // Fetch ride agar context me nahi mila
+    useEffect(() => {
+        if (ride) return
+        setLoading(true)
+        api.getRide(id)
+            .then((d) => setRide(d.ride))
+            .catch(() => setRide(null))
+            .finally(() => setLoading(false))
+    }, [id, ride])
+
+    // 👇 Ab yeh useEffect neeche aayega — 'ride' already declared hai
     useEffect(() => {
         if (!socket || !ride) return
         const onUpdate = (payload) => {
@@ -22,21 +38,6 @@ export default function RideDetails() {
         socket.on('ride:updated', onUpdate)
         return () => socket.off('ride:updated', onUpdate)
     }, [socket, ride, id])
-
-    const [ride, setRide] = useState(() => getRideById(id) || null)
-    const [loading, setLoading] = useState(!ride)
-    const [seats, setSeats] = useState(1)
-    const [messaging, setMessaging] = useState(false)
-    const [msgErr, setMsgErr] = useState('')
-
-    useEffect(() => {
-        if (ride) return
-        setLoading(true)
-        api.getRide(id)
-            .then((d) => setRide(d.ride))
-            .catch(() => setRide(null))
-            .finally(() => setLoading(false))
-    }, [id, ride])
 
     if (loading) {
         return (
@@ -112,7 +113,10 @@ export default function RideDetails() {
                     <Avatar name={driver.name || 'Driver'} size="lg" />
                     <div className="flex-1">
                         <p className="font-bold text-ink">{driver.name || 'Driver'}</p>
-                        <Rating value={driver.rating ?? 0} count={driver.reviews ?? driver.ratingCount ?? 0} />
+                        <Rating
+                            value={driver.ratingCount > 0 ? driver.rating : null}
+                            count={driver.reviews ?? driver.ratingCount ?? 0}
+                        />
                     </div>
                     {driver.verified && <Badge tone="green" icon={ShieldCheck}>Verified</Badge>}
                 </div>

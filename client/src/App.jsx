@@ -60,8 +60,11 @@ import { useApp } from './context/AppContext'
 // Agar user pehle se logged in hai, to Onboarding/Login/Signup screens
 // dobara mat dikhao — seedha uske role ke hisab se home pe bhej do.
 function RedirectIfAuthed({ children }) {
-  const { isAuthed, role } = useApp()
+  const { isAuthed, role, user } = useApp()
   if (isAuthed) {
+    if (role === 'driver' && user && !user.driverProfileComplete) {
+      return <Navigate to="/driver/basic" replace />
+    }
     return <Navigate to={role === 'driver' ? '/driver/dashboard' : '/home'} replace />
   }
   return children
@@ -82,7 +85,7 @@ export default function App() {
         <Route path="/otp" element={<OtpVerify />} />
         <Route path="/reset" element={<ResetPassword />} />
 
-        
+
 
         {/* Everything below requires a logged-in session */}
         <Route element={<RequireAuth />}>

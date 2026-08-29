@@ -130,13 +130,13 @@ export default function Home() {
                 <p className="text-sm text-muted mb-6">No rides posted yet. Be the first to post one!</p>
             )}
 
-            <div className="rounded-2xl bg-neutral-900 text-white p-5 flex items-center gap-4">
+            {/* <div className="rounded-2xl bg-neutral-900 text-white p-5 flex items-center gap-4">
                 <div className="flex-1">
                     <p className="font-bold">Have a car? Start earning.</p>
                     <p className="text-xs opacity-70 mt-1">List your ride and offer seats.</p>
                 </div>
                 <Button size="sm" to="/driver/basic">Get Started</Button>
-            </div>
+            </div> */}
         </Screen>
     )
 }

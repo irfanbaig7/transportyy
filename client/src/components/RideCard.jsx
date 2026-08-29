@@ -14,10 +14,14 @@ export default function RideCard({ ride, to }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             <p className="font-semibold text-ink truncate">{driver.name || 'Driver'}</p>
-            <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-amber-500">
-              <Star size={12} className="fill-amber-400 text-amber-400" />
-              {driver.rating ?? '—'}
-            </span>
+            {driver.ratingCount > 0 ? (
+              <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-amber-500">
+                <Star size={12} className="fill-amber-400 text-amber-400" />
+                {driver.rating?.toFixed(1)}
+              </span>
+            ) : (
+              <span className="text-xs font-semibold text-muted">New</span>
+            )}
           </div>
           <p className="text-xs text-muted truncate">
             {car.brand || 'Car'} {car.number ? `· ${car.number}` : ''}

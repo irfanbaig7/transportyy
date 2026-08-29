@@ -34,7 +34,7 @@ const userSchema = new mongoose.Schema(
     isAvailable: { type: Boolean, default: false }, // driver online/offline toggle
     verified: { type: Boolean, default: false },
 
-    rating: { type: Number, default: 5 },
+    rating: { type: Number, default: 0 },
     ratingCount: { type: Number, default: 0 },
     tripsCount: { type: Number, default: 0 },
 

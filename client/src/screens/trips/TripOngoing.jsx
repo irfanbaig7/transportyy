@@ -1,62 +1,95 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Phone, MessageCircle, MapPin } from 'lucide-react'
-import { Screen, TopBar, Button, Avatar, StickyCTA } from '../../components'
+import { Screen, TopBar, Button, Avatar, StickyCTA, Spinner } from '../../components'
 import { useApp } from '../../context/AppContext'
 import { api } from '../../api/client'
 
 export default function TripOngoing() {
     const { id } = useParams()
     const navigate = useNavigate()
-    const { getTripById, completeTrip } = useApp()
-    const t = getTripById(id)
+    const { user, socket } = useApp()
+
+    const [booking, setBooking] = useState(null)
+    const [loading, setLoading] = useState(true)
     const [connecting, setConnecting] = useState(false)
+    const [completing, setCompleting] = useState(false)
     const [err, setErr] = useState('')
-    if (!t) return null
 
-    const driver = t.driver || {}
-    const from = t.from || t.ride?.from || '—'
-    const to = t.to || t.ride?.to || '—'
-    const progress = Math.round((t.progress || 0.4) * 100)
-    const driverId = driver._id || driver.id
+    const load = () => {
+        api.getBooking(id)
+            .then((d) => setBooking(d.booking))
+            .catch(() => setBooking(null))
+            .finally(() => setLoading(false))
+    }
 
-    const finish = () => {
-        completeTrip(t._id || t.id)
-        navigate(`/trips/${t._id || t.id}/completed`)
+    useEffect(() => {
+        load()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [id])
+
+    useEffect(() => {
+        if (!socket) return
+        const onUpdate = (b) => { if (String(b._id) === String(id)) load() }
+        socket.on('booking:updated', onUpdate)
+        return () => socket.off('booking:updated', onUpdate)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [socket, id])
+
+    if (loading) {
+        return (
+            <Screen header={<TopBar title="Trip in Progress" />}>
+                <div className="flex justify-center py-16"><Spinner size={30} /></div>
+            </Screen>
+        )
+    }
+    if (!booking || !user) return null
+
+    const isDriver = String(booking.driver?._id) === String(user._id)
+    const other = isDriver ? (booking.passenger || {}) : (booking.driver || {})
+    const ride = booking.ride || {}
+    const from = ride.from || '—'
+    const to = ride.to || '—'
+    const progress = Math.round((booking.progress || 0.4) * 100)
+    const otherId = other._id
+
+    const finish = async () => {
+        setCompleting(true); setErr('')
+        try {
+            await api.completeBooking(booking._id)
+            navigate(`/trips/${booking._id}/completed`)
+        } catch (e) {
+            setErr(e.message || 'Could not complete trip.')
+        } finally { setCompleting(false) }
     }
 
     const openChat = async () => {
-        if (!driverId) return
-        setErr('')
-        setConnecting(true)
+        if (!otherId) return
+        setErr(''); setConnecting(true)
         try {
-            const d = await api.startChat(driverId)
+            const d = await api.startChat(otherId)
             navigate(`/chat/${d.chat._id || d.chat.id}`)
-        } catch (e) {
-            setErr(e.message || 'Could not start chat.')
-        } finally {
-            setConnecting(false)
-        }
+        } catch (e) { setErr(e.message || 'Could not start chat.') } finally { setConnecting(false) }
     }
 
-    const callDriver = async () => {
-        if (!driverId) return
-        setErr('')
-        setConnecting(true)
+    const callOther = async () => {
+        if (!otherId) return
+        setErr(''); setConnecting(true)
         try {
-            const d = await api.startChat(driverId)
-            navigate(`/call/${d.chat._id || d.chat.id}`, { state: { role: 'caller', otherUserId: driverId, otherUserName: driver.name || 'Driver' } })
-        } catch (e) {
-            setErr(e.message || 'Could not start call.')
-        } finally {
-            setConnecting(false)
-        }
+            const d = await api.startChat(otherId)
+            navigate(`/call/${d.chat._id || d.chat.id}`, { state: { role: 'caller', otherUserId: otherId, otherUserName: other.name || 'User' } })
+        } catch (e) { setErr(e.message || 'Could not start call.') } finally { setConnecting(false) }
     }
 
     return (
         <Screen
             header={<TopBar title="Trip in Progress" />}
-            footer={<StickyCTA><Button full onClick={finish}>Mark as Completed</Button></StickyCTA>}
+            footer={isDriver ? (
+                <StickyCTA>
+                    {err && <p className="text-xs font-medium text-red-500 mb-2">{err}</p>}
+                    <Button full onClick={finish} disabled={completing}>{completing ? 'Completing…' : 'Mark as Completed'}</Button>
+                </StickyCTA>
+            ) : null}
         >
             <div className="h-40 rounded-2xl bg-brand-tint grid place-items-center mb-4">
                 <MapPin size={40} className="text-brand" />
@@ -67,18 +100,18 @@ export default function TripOngoing() {
                 </div>
                 <p className="text-xs text-muted mt-1.5">{progress}% of the trip completed</p>
             </div>
-            {err && <p className="text-xs font-medium text-red-500 mb-3">{err}</p>}
+            {err && !isDriver && <p className="text-xs font-medium text-red-500 mb-3">{err}</p>}
             <div className="rounded-2xl bg-surface border border-line p-4 shadow-[var(--shadow-card)] flex items-center gap-3">
-                <Avatar name={driver.name || 'Driver'} size="md" />
+                <Avatar name={other.name || 'User'} size="md" />
                 <div className="flex-1">
-                    <p className="font-semibold text-ink">{driver.name || 'Driver'}</p>
+                    <p className="font-semibold text-ink">{other.name || 'User'}</p>
                     <p className="text-xs text-muted">{from} → {to}</p>
                 </div>
                 <div className="flex gap-2">
                     <button onClick={openChat} disabled={connecting} className="tap h-9 w-9 rounded-full bg-brand-tint grid place-items-center disabled:opacity-50">
                         <MessageCircle size={16} className="text-brand" />
                     </button>
-                    <button onClick={callDriver} disabled={connecting} className="tap h-9 w-9 rounded-full bg-brand-tint grid place-items-center disabled:opacity-50">
+                    <button onClick={callOther} disabled={connecting} className="tap h-9 w-9 rounded-full bg-brand-tint grid place-items-center disabled:opacity-50">
                         <Phone size={16} className="text-brand" />
                     </button>
                 </div>

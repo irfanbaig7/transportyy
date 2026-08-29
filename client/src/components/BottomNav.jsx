@@ -6,6 +6,7 @@ export default function BottomNav() {
   const { pathname } = useLocation()
   const { role } = useApp()
   const homePath = role === 'driver' ? '/driver/dashboard' : '/home'
+  const isDriver = role === 'driver'
 
   const isActive = (paths) => paths.some((p) => pathname === p || pathname.startsWith(p + '/'))
 
@@ -20,16 +21,18 @@ export default function BottomNav() {
 
   return (
     <div className="relative shrink-0 bg-surface border-t border-line">
-      <Link
-        to="/post/route"
-        aria-label="Post a ride"
-        className="tap absolute left-1/2 -translate-x-1/2 -top-6 h-14 w-14 rounded-full bg-brand grid place-items-center text-white shadow-[var(--shadow-float)] active:scale-95 transition"
-      >
-        <Plus size={26} />
-      </Link>
-      <div className="grid grid-cols-5 items-center h-16 px-2 pb-[env(safe-area-inset-bottom)]">
+      {isDriver && (
+        <Link
+          to="/post/route"
+          aria-label="Post a ride"
+          className="tap absolute left-1/2 -translate-x-1/2 -top-6 h-14 w-14 rounded-full bg-brand grid place-items-center text-white shadow-[var(--shadow-float)] active:scale-95 transition"
+        >
+          <Plus size={26} />
+        </Link>
+      )}
+      <div className={`grid ${isDriver ? 'grid-cols-5' : 'grid-cols-4'} items-center h-16 px-2 pb-[env(safe-area-inset-bottom)]`}>
         {left.map((t) => <Tab key={t.label} {...t} active={isActive(t.match)} />)}
-        <span aria-hidden />
+        {isDriver && <span aria-hidden />}
         {right.map((t) => <Tab key={t.label} {...t} active={isActive(t.match)} />)}
       </div>
     </div>

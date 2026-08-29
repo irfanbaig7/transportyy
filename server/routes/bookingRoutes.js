@@ -5,9 +5,9 @@ const Booking = require('../models/Booking');
 const Ride = require('../models/Ride');
 const Notification = require('../models/Notification');
 
-// POST /api/bookings  (Booking & Payment screen -> Confirm Booking)
-// Body: { rideId, seats, paymentMethod }
-// Payment abhi FAKE hai (turant "paid" ho jata hai) — real gateway ke liye neeche comment dekho.
+// POST /api/bookings
+// Agar isi passenger ki isi ride pe pehle se active booking hai (pending/upcoming),
+// to naya document banane ke bajaye usi mein seats add kar do — duplicate rows nahi banenge.
 router.post('/', protect, async (req, res) => {
   try {
     const { rideId, seats = 1, paymentMethod = 'UPI' } = req.body;
@@ -16,25 +16,35 @@ router.post('/', protect, async (req, res) => {
     if (ride.seatsAvailable < seats) return res.status(400).json({ error: 'Not enough seats available.' });
 
     const platformFee = 20;
-    const total = ride.price * seats + platformFee;
-
-    // 🔑 INJECT HERE (optional): real payment yaha verify karo (Razorpay order/signature check)
-    // using RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET from server/.env, phir paymentStatus set karo.
     const paymentStatus = 'paid'; // fake success for now
 
-    const booking = await Booking.create({
+    let booking = await Booking.findOne({
       ride: ride._id,
       passenger: req.user._id,
-      driver: ride.driver,
-      seats,
-      pricePerSeat: ride.price,
-      platformFee,
-      total,
-      paymentMethod,
-      paymentStatus,
-      status: 'upcoming',
-      otp: String(Math.floor(1000 + Math.random() * 9000)),
+      status: { $in: ['pending', 'upcoming'] },
     });
+    const wasExisting = !!booking;
+
+    if (booking) {
+      booking.seats += seats;
+      booking.total = booking.pricePerSeat * booking.seats + booking.platformFee;
+      booking.paymentMethod = paymentMethod;
+      await booking.save();
+    } else {
+      booking = await Booking.create({
+        ride: ride._id,
+        passenger: req.user._id,
+        driver: ride.driver,
+        seats,
+        pricePerSeat: ride.price,
+        platformFee,
+        total: ride.price * seats + platformFee,
+        paymentMethod,
+        paymentStatus,
+        status: 'upcoming',
+        otp: String(Math.floor(1000 + Math.random() * 9000)),
+      });
+    }
 
     ride.seatsAvailable -= seats;
     await ride.save();
@@ -42,12 +52,12 @@ router.post('/', protect, async (req, res) => {
     await Notification.create({
       user: ride.driver,
       type: 'booking',
-      title: 'New booking request',
-      body: `${req.user.name} booked ${seats} seat(s), ${ride.from} → ${ride.to}.`,
+      title: wasExisting ? 'Booking updated' : 'New booking request',
+      body: wasExisting
+        ? `${req.user.name} added ${seats} more seat(s), ${ride.from} → ${ride.to}.`
+        : `${req.user.name} booked ${seats} seat(s), ${ride.from} → ${ride.to}.`,
     });
 
-    // Populate driver (with car) and ride before sending back,
-    // so the frontend has everything it needs (name, car, route) right away.
     const populated = await Booking.findById(booking._id)
       .populate('driver', 'name rating car')
       .populate('ride');
@@ -58,14 +68,13 @@ router.post('/', protect, async (req, res) => {
       io.emit('ride:updated', { rideId: ride._id.toString(), seatsAvailable: ride.seatsAvailable });
     }
 
-
     res.status(201).json({ booking: populated });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
-// GET /api/bookings/mine?status=upcoming  (My Trips screen tabs)
+// GET /api/bookings/mine?status=upcoming  (Passenger — My Trips tabs)
 router.get('/mine', protect, async (req, res) => {
   try {
     const query = { passenger: req.user._id };
@@ -80,7 +89,21 @@ router.get('/mine', protect, async (req, res) => {
   }
 });
 
-// GET /api/bookings/requests  (Driver — Booking Requests screen, pending only)
+// GET /api/bookings/driver-trips  (Driver — My Trips screen, ALL statuses)
+// Must stay ABOVE "/:id" below.
+router.get('/driver-trips', protect, async (req, res) => {
+  try {
+    const bookings = await Booking.find({ driver: req.user._id })
+      .populate('passenger', 'name rating')
+      .populate('ride')
+      .sort({ createdAt: -1 });
+    res.json({ bookings });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/bookings/requests  (Driver — pending only)
 router.get('/requests', protect, async (req, res) => {
   try {
     const bookings = await Booking.find({ driver: req.user._id, status: 'pending' })
@@ -92,9 +115,9 @@ router.get('/requests', protect, async (req, res) => {
   }
 });
 
-// GET /api/bookings/earnings  (Driver — completed bookings where I was the driver)
-// Must stay ABOVE the "/:id" route below, otherwise "earnings" would be treated as an :id.
-router.get('/earnings', protect, async (req, res) => {   // 👈 YE BLOCK YAHA UPAR LAO
+// GET /api/bookings/earnings  (Driver — completed bookings)
+// Must stay ABOVE "/:id" below.
+router.get('/earnings', protect, async (req, res) => {
   const bookings = await Booking.find({ driver: req.user._id, status: 'completed' })
     .populate('passenger', 'name')
     .populate('ride')
@@ -102,12 +125,34 @@ router.get('/earnings', protect, async (req, res) => {   // 👈 YE BLOCK YAHA U
   res.json({ bookings });
 });
 
+// GET /api/bookings/ride/:rideId  (Driver — sab bookings ek specific ride ke)
+// Must stay ABOVE "/:id" below.
+router.get('/ride/:rideId', protect, async (req, res) => {
+  try {
+    const bookings = await Booking.find({ ride: req.params.rideId, driver: req.user._id })
+      .populate('passenger', 'name rating')
+      .sort({ createdAt: -1 });
+    res.json({ bookings });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
-// GET /api/bookings/:id  (Trip Details screen)
+
+// GET /api/bookings/:id  (Trip Details — both driver & passenger)
 router.get('/:id', protect, async (req, res) => {
   try {
-    const booking = await Booking.findById(req.params.id).populate('driver', 'name rating car').populate('ride');
+    const booking = await Booking.findById(req.params.id)
+      .populate('driver', 'name rating car')
+      .populate('passenger', 'name rating')
+      .populate('ride');
     if (!booking) return res.status(404).json({ error: 'Booking not found.' });
+
+    const uid = String(req.user._id);
+    if (String(booking.driver._id) !== uid && String(booking.passenger._id) !== uid) {
+      return res.status(403).json({ error: 'Not authorized to view this booking.' });
+    }
+
     res.json({ booking });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -121,12 +166,10 @@ router.patch('/:id/accept', protect, async (req, res) => {
     { status: 'upcoming' },
     { new: true }
   );
-  if
-    (!booking) return res.status(404).json({ error: 'Booking not found.' });
+  if (!booking) return res.status(404).json({ error: 'Booking not found.' });
 
   const io = req.app.get('io');
   if (io) io.to(`user:${booking.passenger}`).emit('booking:updated', booking);
-
 
   res.json({ booking });
 });
@@ -156,8 +199,7 @@ router.patch('/:id/reject', protect, async (req, res) => {
   }
 });
 
-// PATCH /api/bookings/:id/cancel  (Cancel Booking screen)  Body: { reason }
-// Also gives the seat(s) back to the ride so other passengers can book them.
+// PATCH /api/bookings/:id/cancel  (Passenger cancels)
 router.patch('/:id/cancel', protect, async (req, res) => {
   try {
     const booking = await Booking.findOne({ _id: req.params.id, passenger: req.user._id });
@@ -174,7 +216,6 @@ router.patch('/:id/cancel', protect, async (req, res) => {
       { new: true }
     );
 
-    // 👇 ADD THIS
     const io = req.app.get('io');
     if (io) {
       io.to(`user:${booking.driver}`).emit('booking:updated', booking);
@@ -182,44 +223,65 @@ router.patch('/:id/cancel', protect, async (req, res) => {
     }
 
     res.json({ booking });
-
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
-// PATCH /api/bookings/:id/start  (Trip Ongoing screen)
+// PATCH /api/bookings/:id/start  (DRIVER ONLY — must enter passenger's OTP)  Body: { otp }
 router.patch('/:id/start', protect, async (req, res) => {
-  const booking = await Booking.findByIdAndUpdate(req.params.id, { status: 'ongoing', progress: 0.1 }, { new: true });
+  try {
+    const { otp } = req.body;
+    const booking = await Booking.findOne({ _id: req.params.id, driver: req.user._id });
+    if (!booking) return res.status(404).json({ error: 'Booking not found.' });
+    if (booking.status !== 'upcoming') {
+      return res.status(400).json({ error: 'This trip cannot be started right now.' });
+    }
+    if (!otp || String(otp) !== String(booking.otp)) {
+      return res.status(400).json({ error: 'Incorrect OTP. Ask the passenger for their pickup code.' });
+    }
 
-  const io = req.app.get('io');
-  if (io) {
-    io.to(`user:${booking.driver}`).emit('booking:updated', booking);
-    io.to(`user:${booking.passenger}`).emit('booking:updated', booking);
+    booking.status = 'ongoing';
+    booking.progress = 0.1;
+    await booking.save();
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user:${booking.driver}`).emit('booking:updated', booking);
+      io.to(`user:${booking.passenger}`).emit('booking:updated', booking);
+    }
+
+    res.json({ booking });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
-
-  res.json({ booking });
 });
 
-// PATCH /api/bookings/:id/complete  (Trip Completed screen)
+// PATCH /api/bookings/:id/complete  (DRIVER ONLY)
 router.patch('/:id/complete', protect, async (req, res) => {
-  const booking = await Booking.findByIdAndUpdate(
-    req.params.id,
-    { status: 'completed', progress: 1 },
-    { new: true }
-  );
-  await require('../models/User').findByIdAndUpdate(booking.passenger, { $inc: { tripsCount: 1 } });
+  try {
+    const booking = await Booking.findOne({ _id: req.params.id, driver: req.user._id });
+    if (!booking) return res.status(404).json({ error: 'Booking not found.' });
+    if (booking.status !== 'ongoing') return res.status(400).json({ error: 'Trip is not ongoing.' });
 
-  const io = req.app.get('io');
-  if (io) {
-    io.to(`user:${booking.driver}`).emit('booking:updated', booking);
-    io.to(`user:${booking.passenger}`).emit('booking:updated', booking);
+    booking.status = 'completed';
+    booking.progress = 1;
+    await booking.save();
+    await require('../models/User').findByIdAndUpdate(booking.passenger, { $inc: { tripsCount: 1 } });
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user:${booking.driver}`).emit('booking:updated', booking);
+      io.to(`user:${booking.passenger}`).emit('booking:updated', booking);
+    }
+
+    res.json({ booking });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
-
-  res.json({ booking });
 });
 
-// PATCH /api/bookings/:id/rate  (Rate & Review screen)  Body: { rating, text }
+// PATCH /api/bookings/:id/rate  (Passenger rates driver)
 router.patch('/:id/rate', protect, async (req, res) => {
   const { rating, text } = req.body;
   const booking = await Booking.findByIdAndUpdate(
@@ -243,8 +305,5 @@ router.patch('/:id/rate', protect, async (req, res) => {
 
   res.json({ booking });
 });
-
-
-// GET /api/bookings/:id  (Trip Details screen)
 
 module.exports = router;

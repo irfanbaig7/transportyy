@@ -5,9 +5,8 @@ import { useApp } from '../../context/AppContext'
 
 export default function Profile() {
     const { user } = useApp()
-    const memberSince = user.createdAt
-        ? new Date(user.createdAt).toLocaleDateString([], { month: 'short', year: 'numeric' })
-        : '—'
+    const isDriver = user.role === 'driver'
+
     return (
         <Screen header={<TopBar title="Profile" back={false} />} footer={<BottomNav />}>
             <div className="flex flex-col items-center text-center mb-5">
@@ -18,10 +17,16 @@ export default function Profile() {
                 <Button size="sm" variant="outline" to="/profile/edit" className="mt-4">Edit Profile</Button>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 mb-5">
-                <Stat icon={Star} label="Rating" value={user.rating} />
-                <Stat icon={RouteIcon} label="Trips" value={user.tripsCount} />
-                <Stat icon={ShieldCheck} label="Member" value={memberSince} />            </div>
+            {isDriver && (
+                <div className="grid grid-cols-2 gap-2 mb-5">
+                    <Stat
+                        icon={Star}
+                        label="Rating"
+                        value={user.ratingCount > 0 ? user.rating.toFixed(1) : 'New'}
+                    />
+                    <Stat icon={RouteIcon} label="Trips" value={user.tripsCount} />
+                </div>
+            )}
 
             <div className="rounded-2xl bg-surface border border-line divide-y divide-line overflow-hidden">
                 <MenuRow to="/menu" icon={MenuIcon} label="Menu" />

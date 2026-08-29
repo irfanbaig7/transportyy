@@ -14,7 +14,7 @@ function validate(form) {
 
 export default function CreateAccount() {
     const navigate = useNavigate()
-    const { signup, loading } = useApp()
+    const { signup, loading, role } = useApp()
     const [form, setForm] = useState({ name: '', phone: '', email: '', password: '' })
     const [err, setErr] = useState('')
 
@@ -25,14 +25,16 @@ export default function CreateAccount() {
         setErr('')
 
         const clientError = validate(form)
-        if (clientError) {
-            setErr(clientError)
-            return
-        }
+        if (clientError) { setErr(clientError); return }
+
+        // signup() ke baad server se aaya role hamesha 'passenger' hota hai (driver
+        // banna baad mein driver onboarding complete karne se hota hai) — isliye
+        // ChooseRole screen pe select kiya gaya intent yahin capture kar lo.
+        const intendedRole = role
 
         try {
             await signup(form)
-            navigate('/home')
+            navigate(intendedRole === 'driver' ? '/driver/basic' : '/home')
         } catch (e) {
             setErr(e.message || 'Signup failed.')
         }

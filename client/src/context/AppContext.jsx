@@ -228,8 +228,7 @@ export function AppProvider({ children }) {
       return d.booking
     },
     cancelBooking: async (tripId, reason = '') => { await api.cancelBooking(tripId, reason); refreshMyTrips() },
-    startTrip: async (tripId) => { await api.startBooking(tripId); refreshMyTrips() },
-    completeTrip: async (tripId) => { await api.completeBooking(tripId); refreshMyTrips() },
+    startTrip: async (tripId, otp) => { await api.startBooking(tripId, otp); refreshMyTrips() }, completeTrip: async (tripId) => { await api.completeBooking(tripId); refreshMyTrips() },
     rateTrip: async (tripId, rating, text = '') => { await api.rateBooking(tripId, rating, text); refreshMyTrips() },
 
     acceptRequest: async (id) => { await api.acceptBooking(id); refreshRequests(); refreshMyRides() },
