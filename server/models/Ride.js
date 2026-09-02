@@ -16,7 +16,7 @@ const rideSchema = new mongoose.Schema(
     seatsAvailable: { type: Number, required: true },
     price: { type: Number, required: true },
 
-    status: { type: String, enum: ['active', 'completed', 'cancelled'], default: 'active' },
+    status: { type: String, enum: ['active', 'completed', 'cancelled', 'cancelled'], default: 'active' },
   },
   { timestamps: true }
 );

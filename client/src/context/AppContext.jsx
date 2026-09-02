@@ -141,13 +141,17 @@ export function AppProvider({ children }) {
     socket.on('chat:message', onChatMessage)
     socket.on('call:incoming', onIncomingCall)
     socket.on('call:ended', onCallEnded)
+    socket.on('booking:new', onBookingNew)      // 👈 ADD
+    socket.on('booking:updated', onBookingUpdated)  // 👈 ADD
 
     return () => {
       socket.off('chat:message', onChatMessage)
       socket.off('call:incoming', onIncomingCall)
       socket.off('call:ended', onCallEnded)
+      socket.off('booking:new', onBookingNew)      // 👈 ADD
+      socket.off('booking:updated', onBookingUpdated)  // 👈 ADD
     }
-  }, [socket, user, refreshChats])
+  }, [socket, user, refreshChats, refreshRequests, refreshMyRides, refreshNotifications])
 
   const actions = useMemo(() => ({
     setRole,

@@ -245,10 +245,14 @@ router.patch('/:id/start', protect, async (req, res) => {
     booking.progress = 0.1;
     await booking.save();
 
+    // 👇 NAYA: gaadi nikal chuki — ride ab "active/bookable" nahi rahni chahiye
+    await Ride.findByIdAndUpdate(booking.ride, { status: 'ongoing' });
+
     const io = req.app.get('io');
     if (io) {
       io.to(`user:${booking.driver}`).emit('booking:updated', booking);
       io.to(`user:${booking.passenger}`).emit('booking:updated', booking);
+      io.emit('ride:updated', { rideId: booking.ride.toString() }); // 👈 taaki Home/Search bhi live hat jaaye
     }
 
     res.json({ booking });
@@ -269,10 +273,14 @@ router.patch('/:id/complete', protect, async (req, res) => {
     await booking.save();
     await require('../models/User').findByIdAndUpdate(booking.passenger, { $inc: { tripsCount: 1 } });
 
+    // 👇 NAYA
+    await Ride.findByIdAndUpdate(booking.ride, { status: 'completed' });
+
     const io = req.app.get('io');
     if (io) {
       io.to(`user:${booking.driver}`).emit('booking:updated', booking);
       io.to(`user:${booking.passenger}`).emit('booking:updated', booking);
+      io.emit('ride:updated', { rideId: booking.ride.toString() });
     }
 
     res.json({ booking });

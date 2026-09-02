@@ -6,6 +6,7 @@ import { useApp } from '../../context/AppContext'
 
 export default function DriverDashboard() {
     const { user, isAvailable, toggleAvailability, driverTrips, pendingRequests, refreshMyRides, refreshRequests } = useApp()
+    const upcomingRides = driverTrips.filter((t) => t.status === 'active')
 
     // Screen khulte hi fresh seats/requests mangwao — sirf login ke waqt
     // fetch hone se yeh values stale reh jaate the bina reload ke.
@@ -46,18 +47,18 @@ export default function DriverDashboard() {
                     <p className="text-sm font-bold text-ink">Today's Availability</p>
                     <Toggle checked={isAvailable} onChange={toggleAvailability} />
                 </div>
-                {driverTrips[0] && (
+                {upcomingRides[0] && (
                     <div className="flex items-center gap-2 text-sm">
                         <MapPin size={15} className="text-brand" />
-                        <span className="font-semibold text-ink">{driverTrips[0].from} → {driverTrips[0].to}</span>
+                        <span className="font-semibold text-ink">{upcomingRides[0].from} → {upcomingRides[0].to}</span>
                     </div>
                 )}
-                {driverTrips[0] && (
+                {upcomingRides[0] && (
                     <p className="text-xs text-muted mt-1">
-                        {driverTrips[0].date}, {driverTrips[0].time} · {driverTrips[0].seatsAvailable ?? 0} Seats Available
+                        {upcomingRides[0].date}, {upcomingRides[0].time} · {upcomingRides[0].seatsAvailable ?? 0} Seats Available
                     </p>
                 )}
-                {!driverTrips.length && (
+                {!upcomingRides.length && (
                     <p className="text-xs text-muted">No rides posted yet. Tap + below to post one.</p>
                 )}
             </div>
@@ -91,11 +92,12 @@ export default function DriverDashboard() {
                 <p className="text-sm font-bold text-ink">Upcoming Trips</p>
                 <Link to="/trips" className="text-xs font-semibold text-brand">View All</Link>
             </div>
-            {driverTrips.length ? (
-                driverTrips.map((t) => (
-                    <Link key={t._id || t.id} to="/driver/requests" className="tap block rounded-2xl bg-surface border border-line p-4 shadow-(--shadow-card)">                        <div className="flex items-center gap-2 text-sm font-semibold text-ink mb-1">
-                        <MapPin size={14} className="text-brand" /> {t.from} → {t.to}
-                    </div>
+            {upcomingRides.length ? (
+                upcomingRides.map((t) => (
+                    <Link key={t._id || t.id} to="/driver/requests" className="tap block rounded-2xl bg-surface border border-line p-4 shadow-(--shadow-card)">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-ink mb-1">
+                            <MapPin size={14} className="text-brand" /> {t.from} → {t.to}
+                        </div>
                         <p className="text-xs text-muted">{t.date}, {t.time}</p>
                         <Badge tone="green" className="mt-2">{(t.seatsTotal - t.seatsAvailable) || 0} Seats Booked</Badge>
                     </Link>

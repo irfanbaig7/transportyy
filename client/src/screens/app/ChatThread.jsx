@@ -17,7 +17,8 @@ function dayLabel(dateStr) {
 export default function ChatThread() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { getChatById, sendMessage, markChatRead, user } = useApp()
+  // const { getChatById, sendMessage, markChatRead, user } = useApp() 
+  const { getChatById, sendMessage, markChatRead, user, refreshChats } = useApp()
   const chat = getChatById(id)
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
@@ -26,6 +27,12 @@ export default function ChatThread() {
   useEffect(() => {
     markChatRead(id)
   }, [id, markChatRead])
+
+  useEffect(() => {
+    if (!chat) {
+      refreshChats()
+    }
+  }, [chat, id, refreshChats])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })

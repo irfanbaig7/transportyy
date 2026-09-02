@@ -11,9 +11,11 @@ const TABS = ['upcoming', 'ongoing', 'completed', 'cancelled']
 // driver ke liye "trip" uski posted ride hai, bookings uske andar hote hain.
 function effectiveStatus(ride, bookings) {
     if (bookings.some((b) => b.status === 'ongoing')) return 'ongoing'
-    if (ride.status === 'completed') return 'completed'
     if (ride.status === 'cancelled') return 'cancelled'
-    return 'upcoming' // active ride — bookings ho ya na ho
+    if (bookings.length > 0 && bookings.every((b) => ['completed', 'cancelled'].includes(b.status))) {
+        return 'completed'
+    }
+    return 'upcoming'
 }
 
 export default function MyTrips() {
