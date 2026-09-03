@@ -76,7 +76,8 @@ router.post('/forgot-password', async (req, res) => {
     // aur neeche wali dev line hata do taaki OTP response me expose na ho.
     console.log(`📩 OTP for ${phone}: ${otp}`);
 
-    res.json({ message: 'OTP sent.', devOtp: otp }); // devOtp: production me remove karo
+    // server/routes/authRoutes.js — forgot-password route:
+    res.json({ message: 'OTP sent.', ...(process.env.NODE_ENV !== 'production' && { devOtp: otp }) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

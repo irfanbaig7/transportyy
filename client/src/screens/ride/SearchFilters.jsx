@@ -43,7 +43,6 @@ export default function SearchFilters() {
 
             <div className="space-y-4">
                 <Toggle label="AC Only" checked={filters.ac} onChange={(v) => setFilters({ ac: v })} />
-                <Toggle label="Verified Drivers Only" checked={filters.verifiedOnly} onChange={(v) => setFilters({ verifiedOnly: v })} />
             </div>
         </Screen>
     )

@@ -36,7 +36,12 @@ export default function CallScreen() {
 
         let cancelled = false
 
+        // CallScreen.jsx cleanup function ke andar add karo:
+        // CallScreen.jsx cleanup function ke andar add karo:
         const cleanup = () => {
+            if (!endedRef.current && otherUserId) {
+                socket.emit('call:end', { toUserId: otherUserId })
+            }
             if (timerRef.current) clearInterval(timerRef.current)
             localStreamRef.current?.getTracks().forEach((t) => t.stop())
             pcRef.current?.close()

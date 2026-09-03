@@ -19,7 +19,6 @@ import DriverCarDetails from './screens/driver/DriverCarDetails'
 import DriverDocuments from './screens/driver/DriverDocuments'
 import DriverReview from './screens/driver/DriverReview'
 import DriverDashboard from './screens/driver/DriverDashboard'
-import BookingRequests from './screens/driver/BookingRequests'
 import Earnings from './screens/driver/Earnings'
 
 // Ride posting + passenger booking
@@ -95,7 +94,6 @@ export default function App() {
           <Route path="/driver/documents" element={<DriverDocuments />} />
           <Route path="/driver/review" element={<DriverReview />} />
           <Route path="/driver/dashboard" element={<DriverDashboard />} />
-          <Route path="/driver/requests" element={<BookingRequests />} />
           <Route path="/driver/earnings" element={<Earnings />} />
 
           {/* Ride posting + booking */}

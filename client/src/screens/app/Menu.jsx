@@ -6,7 +6,6 @@ import { useApp } from '../../context/AppContext'
 const ITEMS = [
     { icon: Car, label: 'Become a Driver', to: '/driver/basic' },
     { icon: Wallet, label: 'Earnings', to: '/driver/earnings' },
-    { icon: Inbox, label: 'Booking Requests', to: '/driver/requests' },
     { icon: MapPinned, label: 'States Gallery', to: '/states' },
     { icon: Settings, label: 'Settings', to: '/settings' },
     { icon: HelpCircle, label: 'Help & Support', to: '/help' },

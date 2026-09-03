@@ -11,9 +11,22 @@ const Notification = require('../models/Notification');
 router.post('/', protect, async (req, res) => {
   try {
     const { rideId, seats = 1, paymentMethod = 'UPI' } = req.body;
-    const ride = await Ride.findById(rideId);
-    if (!ride) return res.status(404).json({ error: 'Ride not found.' });
-    if (ride.seatsAvailable < seats) return res.status(400).json({ error: 'Not enough seats available.' });
+
+    // 👇 PEHLE: sirf existence + ownership check ke liye halka fetch
+    const rideCheck = await Ride.findById(rideId);
+    if (!rideCheck) return res.status(404).json({ error: 'Ride not found.' });
+
+    if (String(rideCheck.driver) === String(req.user._id)) {
+      return res.status(400).json({ error: 'You cannot book your own ride.' });
+    }
+
+    // 👇 NAYA: atomic seat-deduction — race-condition-safe
+    const ride = await Ride.findOneAndUpdate(
+      { _id: rideId, seatsAvailable: { $gte: seats } },
+      { $inc: { seatsAvailable: -seats } },
+      { new: true }
+    );
+    if (!ride) return res.status(400).json({ error: 'Not enough seats available.' });
 
     const platformFee = 20;
     const paymentStatus = 'paid'; // fake success for now
@@ -46,8 +59,9 @@ router.post('/', protect, async (req, res) => {
       });
     }
 
-    ride.seatsAvailable -= seats;
-    await ride.save();
+    // 👇 YE PURANI 2 LINES HATA DO (ab zaroorat nahi — upar hi atomic ho gaya):
+    // ride.seatsAvailable -= seats;
+    // await ride.save();
 
     await Notification.create({
       user: ride.driver,
@@ -290,28 +304,36 @@ router.patch('/:id/complete', protect, async (req, res) => {
 });
 
 // PATCH /api/bookings/:id/rate  (Passenger rates driver)
+// PATCH /api/bookings/:id/rate  (Passenger rates driver)
 router.patch('/:id/rate', protect, async (req, res) => {
-  const { rating, text } = req.body;
-  const booking = await Booking.findByIdAndUpdate(
-    req.params.id,
-    { rated: true, myRating: rating, myReview: text },
-    { new: true }
-  );
+  try {
+    const { rating, text } = req.body;
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ error: 'Booking not found.' });
+    if (booking.rated) return res.status(400).json({ error: 'This trip has already been rated.' });
 
-  const User = require('../models/User');
-  const driver = await User.findById(booking.driver);
-  const newCount = driver.ratingCount + 1;
-  driver.rating = ((driver.rating * driver.ratingCount) + rating) / newCount;
-  driver.ratingCount = newCount;
-  await driver.save();
+    booking.rated = true;
+    booking.myRating = rating;
+    booking.myReview = text;
+    await booking.save();
 
-  const io = req.app.get('io');
-  if (io) {
-    io.to(`user:${booking.driver}`).emit('booking:updated', booking);
-    io.to(`user:${booking.passenger}`).emit('booking:updated', booking);
+    const User = require('../models/User');
+    const driver = await User.findById(booking.driver);
+    const newCount = driver.ratingCount + 1;
+    driver.rating = ((driver.rating * driver.ratingCount) + rating) / newCount;
+    driver.ratingCount = newCount;
+    await driver.save();
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user:${booking.driver}`).emit('booking:updated', booking);
+      io.to(`user:${booking.passenger}`).emit('booking:updated', booking);
+    }
+
+    res.json({ booking });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
-
-  res.json({ booking });
 });
 
 module.exports = router;

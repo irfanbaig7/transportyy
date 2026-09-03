@@ -1,18 +1,15 @@
 import { Link } from 'react-router-dom'
 import { useEffect } from 'react'
-import { Bell, Route as RouteIcon, Wallet, CalendarCheck, Inbox, MapPin } from 'lucide-react'
+import { Bell, Route as RouteIcon, Wallet, MapPin } from 'lucide-react'
 import { Screen, TopBar, BottomNav, Avatar, Badge, Toggle } from '../../components'
 import { useApp } from '../../context/AppContext'
 
 export default function DriverDashboard() {
-    const { user, isAvailable, toggleAvailability, driverTrips, pendingRequests, refreshMyRides, refreshRequests } = useApp()
+    const { user, isAvailable, toggleAvailability, driverTrips, refreshMyRides } = useApp()
     const upcomingRides = driverTrips.filter((t) => t.status === 'active')
 
-    // Screen khulte hi fresh seats/requests mangwao — sirf login ke waqt
-    // fetch hone se yeh values stale reh jaate the bina reload ke.
     useEffect(() => {
         refreshMyRides()
-        refreshRequests()
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
@@ -81,11 +78,9 @@ export default function DriverDashboard() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-2 mb-5">
+            <div className="grid grid-cols-2 gap-2 mb-5">
                 <QuickAction icon={RouteIcon} label="My Trips" to="/trips" />
                 <QuickAction icon={Wallet} label="Earnings" to="/driver/earnings" />
-                <QuickAction icon={CalendarCheck} label="Availability" to="/driver/dashboard" />
-                <QuickAction icon={Inbox} label="Requests" to="/driver/requests" badge={pendingRequests} />
             </div>
 
             <div className="flex items-center justify-between mb-2">
@@ -94,7 +89,7 @@ export default function DriverDashboard() {
             </div>
             {upcomingRides.length ? (
                 upcomingRides.map((t) => (
-                    <Link key={t._id || t.id} to="/driver/requests" className="tap block rounded-2xl bg-surface border border-line p-4 shadow-(--shadow-card)">
+                    <Link key={t._id || t.id} to="/trips" className="tap block rounded-2xl bg-surface border border-line p-4 shadow-(--shadow-card)">
                         <div className="flex items-center gap-2 text-sm font-semibold text-ink mb-1">
                             <MapPin size={14} className="text-brand" /> {t.from} → {t.to}
                         </div>
@@ -109,14 +104,9 @@ export default function DriverDashboard() {
     )
 }
 
-function QuickAction({ icon: Icon, label, to, badge }) {
+function QuickAction({ icon: Icon, label, to }) {
     return (
         <Link to={to} className="tap relative flex flex-col items-center gap-1.5 p-2.5 rounded-xl bg-surface border border-line">
-            {badge > 0 && (
-                <span className="absolute top-1 right-1.5 h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold grid place-items-center">
-                    {badge}
-                </span>
-            )}
             <Icon size={18} className="text-brand" />
             <span className="text-[10px] font-medium text-ink text-center leading-tight">{label}</span>
         </Link>
