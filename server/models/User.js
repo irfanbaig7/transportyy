@@ -32,7 +32,10 @@ const userSchema = new mongoose.Schema(
 
     role: { type: String, enum: ['passenger', 'driver'], default: 'passenger' },
     isAvailable: { type: Boolean, default: false }, // driver online/offline toggle
-    verified: { type: Boolean, default: false },
+    verified: { type: Boolean, default: false }, // 👈 sirf ADMIN isko true karega (driver documents approve karke)
+    phoneVerified: { type: Boolean, default: false }, // 👈 NEW — signup OTP verify hone par true hota hai
+    isAdmin: { type: Boolean, default: false },
+    isBanned: { type: Boolean, default: false }, // 👈 NEW
 
     rating: { type: Number, default: 0 },
     ratingCount: { type: Number, default: 0 },

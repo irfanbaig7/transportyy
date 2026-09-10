@@ -11,11 +11,22 @@ const METHODS = [
     { id: 'Wallet', label: 'Wallet', icon: Wallet },
 ]
 
+function loadRazorpayScript() {
+    return new Promise((resolve) => {
+        if (window.Razorpay) return resolve(true)
+        const script = document.createElement('script')
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+        script.onload = () => resolve(true)
+        script.onerror = () => resolve(false)
+        document.body.appendChild(script)
+    })
+}
+
 export default function BookingPayment() {
     const { id } = useParams()
     const navigate = useNavigate()
     const location = useLocation()
-    const { getRideById, bookRide } = useApp()
+    const { getRideById, bookRide, user } = useApp()
 
     const [ride, setRide] = useState(() => getRideById(id) || null)
     const [loading, setLoading] = useState(!ride)
@@ -58,8 +69,86 @@ export default function BookingPayment() {
         setErr('')
         setConfirming(true)
         try {
-            await bookRide({ ride, seats, paymentMethod: method })
-            navigate('/booking/processing')
+            const token = localStorage.getItem('chalo_token')
+
+            // 1) Backend se payment order banwao
+            const orderRes = await fetch('/api/payments/create-order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ rideId: ride._id || ride.id, seats }),
+            })
+            const orderData = await orderRes.json()
+
+            // Agar payments configure nahi hain (dev mode), seedha booking bana do
+            if (orderRes.status === 503) {
+                await bookRide({ ride, seats, paymentMethod: method })
+                navigate('/booking/processing')
+                return
+            }
+            if (!orderRes.ok) throw new Error(orderData.error || 'Could not start payment.')
+
+            // 2) Razorpay checkout script load karo aur open karo
+            const loaded = await loadRazorpayScript()
+            if (!loaded) throw new Error('Could not load payment gateway. Check your internet.')
+
+            const options = {
+                key: orderData.keyId,
+                amount: orderData.order.amount,
+                currency: 'INR',
+                name: 'Chalo',
+                description: `${ride.from} → ${ride.to}`,
+                order_id: orderData.order.id,
+                prefill: { name: user?.name, contact: user?.phone },
+                theme: { color: '#12a150' },
+                handler: async (response) => {
+                    try {
+                        // 3) Signature verify karwao
+                        const verifyRes = await fetch('/api/payments/verify', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                            body: JSON.stringify({
+                                orderId: response.razorpay_order_id,
+                                paymentId: response.razorpay_payment_id,
+                                signature: response.razorpay_signature,
+                            }),
+                        })
+                        const verifyData = await verifyRes.json()
+                        if (!verifyRes.ok) throw new Error(verifyData.error || 'Payment verification failed.')
+
+                        // 4) Ab booking finalize karo, payment proof ke saath
+                        const bookRes = await fetch('/api/bookings', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                            body: JSON.stringify({
+                                rideId: ride._id || ride.id,
+                                seats,
+                                paymentMethod: method,
+                                razorpayOrderId: response.razorpay_order_id,
+                                razorpayPaymentId: response.razorpay_payment_id,
+                            }),
+                        })
+                        const bookData = await bookRes.json()
+                        if (!bookRes.ok) throw new Error(bookData.error || 'Booking failed after payment.')
+
+                        navigate('/booking/processing')
+                    } catch (e) {
+                        setErr(e.message || 'Something went wrong after payment.')
+                        navigate('/booking/failed')
+                    } finally {
+                        setConfirming(false)
+                    }
+                },
+                modal: {
+                    ondismiss: () => setConfirming(false),
+                },
+            }
+
+            const rzp = new window.Razorpay(options)
+            rzp.on('payment.failed', () => {
+                setConfirming(false)
+                navigate('/booking/failed')
+            })
+            rzp.open()
         } catch (e) {
             setErr(e.message || 'Booking failed. Try again.')
             setConfirming(false)
@@ -73,7 +162,7 @@ export default function BookingPayment() {
                 <StickyCTA>
                     {err && <p className="text-xs font-medium text-red-500 mb-2">{err}</p>}
                     <Button full icon={ShieldCheck} onClick={confirm} disabled={confirming}>
-                        {confirming ? 'Confirming…' : 'Confirm Booking'}
+                        {confirming ? 'Processing…' : 'Confirm & Pay'}
                     </Button>
                 </StickyCTA>
             }
@@ -116,7 +205,7 @@ export default function BookingPayment() {
                     </button>
                 ))}
             </div>
-            <p className="text-center text-xs text-muted mt-4">🔒 Secure & Safe Payments</p>
+            <p className="text-center text-xs text-muted mt-4">🔒 Secure & Safe Payments via Razorpay</p>
         </Screen>
     )
 }

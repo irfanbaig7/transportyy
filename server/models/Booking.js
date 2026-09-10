@@ -13,6 +13,8 @@ const bookingSchema = new mongoose.Schema(
     total: { type: Number, required: true },
 
     paymentMethod: { type: String, enum: ['UPI', 'Card', 'Wallet'], default: 'UPI' },
+    razorpayOrderId: String,   // 👈 NEW
+    razorpayPaymentId: String, // 👈 NEW
     paymentStatus: { type: String, enum: ['pending', 'paid', 'failed'], default: 'pending' },
 
     // pending = driver hasn't accepted yet, upcoming = accepted, ongoing/completed/cancelled follow trip lifecycle

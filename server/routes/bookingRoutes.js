@@ -8,84 +8,88 @@ const Notification = require('../models/Notification');
 // POST /api/bookings
 // Agar isi passenger ki isi ride pe pehle se active booking hai (pending/upcoming),
 // to naya document banane ke bajaye usi mein seats add kar do — duplicate rows nahi banenge.
+// POST /api/bookings
+// Ab yeh route real payment verification maangta hai (Razorpay order+payment ID).
+// Agar Razorpay configured nahi hai (dev/testing), to paymentId/orderId skip ho sakta hai.
 router.post('/', protect, async (req, res) => {
-  try {
-    const { rideId, seats = 1, paymentMethod = 'UPI' } = req.body;
+  const { rideId, seats = 1, paymentMethod = 'UPI', razorpayOrderId, razorpayPaymentId } = req.body;
 
-    // 👇 PEHLE: sirf existence + ownership check ke liye halka fetch
-    const rideCheck = await Ride.findById(rideId);
-    if (!rideCheck) return res.status(404).json({ error: 'Ride not found.' });
+  const rideCheck = await Ride.findById(rideId);
+  if (!rideCheck) return res.status(404).json({ error: 'Ride not found.' });
 
-    if (String(rideCheck.driver) === String(req.user._id)) {
-      return res.status(400).json({ error: 'You cannot book your own ride.' });
-    }
+  if (String(rideCheck.driver) === String(req.user._id)) {
+    return res.status(400).json({ error: 'You cannot book your own ride.' });
+  }
 
-    // 👇 NAYA: atomic seat-deduction — race-condition-safe
-    const ride = await Ride.findOneAndUpdate(
-      { _id: rideId, seatsAvailable: { $gte: seats } },
-      { $inc: { seatsAvailable: -seats } },
-      { new: true }
-    );
-    if (!ride) return res.status(400).json({ error: 'Not enough seats available.' });
+  // Agar Razorpay configured hai, to payment proof mandatory hai
+  const paymentsConfigured = !!process.env.RAZORPAY_KEY_ID;
+  if (paymentsConfigured && (!razorpayOrderId || !razorpayPaymentId)) {
+    return res.status(400).json({ error: 'Payment verification required before booking.' });
+  }
 
-    const platformFee = 20;
-    const paymentStatus = 'paid'; // fake success for now
+  const ride = await Ride.findOneAndUpdate(
+    { _id: rideId, seatsAvailable: { $gte: seats } },
+    { $inc: { seatsAvailable: -seats } },
+    { new: true }
+  );
+  if (!ride) return res.status(400).json({ error: 'Not enough seats available.' });
 
-    let booking = await Booking.findOne({
+  const platformFee = 20;
+  const paymentStatus = paymentsConfigured ? 'paid' : 'pending'; // dev mode me pending rahega
+
+  let booking = await Booking.findOne({
+    ride: ride._id,
+    passenger: req.user._id,
+    status: { $in: ['pending', 'upcoming'] },
+  });
+  const wasExisting = !!booking;
+
+  if (booking) {
+    booking.seats += seats;
+    booking.total = booking.pricePerSeat * booking.seats + booking.platformFee;
+    booking.paymentMethod = paymentMethod;
+    booking.paymentStatus = paymentStatus;
+    booking.razorpayOrderId = razorpayOrderId;
+    booking.razorpayPaymentId = razorpayPaymentId;
+    await booking.save();
+  } else {
+    booking = await Booking.create({
       ride: ride._id,
       passenger: req.user._id,
-      status: { $in: ['pending', 'upcoming'] },
+      driver: ride.driver,
+      seats,
+      pricePerSeat: ride.price,
+      platformFee,
+      total: ride.price * seats + platformFee,
+      paymentMethod,
+      paymentStatus,
+      razorpayOrderId,
+      razorpayPaymentId,
+      status: 'upcoming',
+      otp: String(Math.floor(1000 + Math.random() * 9000)),
     });
-    const wasExisting = !!booking;
-
-    if (booking) {
-      booking.seats += seats;
-      booking.total = booking.pricePerSeat * booking.seats + booking.platformFee;
-      booking.paymentMethod = paymentMethod;
-      await booking.save();
-    } else {
-      booking = await Booking.create({
-        ride: ride._id,
-        passenger: req.user._id,
-        driver: ride.driver,
-        seats,
-        pricePerSeat: ride.price,
-        platformFee,
-        total: ride.price * seats + platformFee,
-        paymentMethod,
-        paymentStatus,
-        status: 'upcoming',
-        otp: String(Math.floor(1000 + Math.random() * 9000)),
-      });
-    }
-
-    // 👇 YE PURANI 2 LINES HATA DO (ab zaroorat nahi — upar hi atomic ho gaya):
-    // ride.seatsAvailable -= seats;
-    // await ride.save();
-
-    await Notification.create({
-      user: ride.driver,
-      type: 'booking',
-      title: wasExisting ? 'Booking updated' : 'New booking request',
-      body: wasExisting
-        ? `${req.user.name} added ${seats} more seat(s), ${ride.from} → ${ride.to}.`
-        : `${req.user.name} booked ${seats} seat(s), ${ride.from} → ${ride.to}.`,
-    });
-
-    const populated = await Booking.findById(booking._id)
-      .populate('driver', 'name rating car')
-      .populate('ride');
-
-    const io = req.app.get('io');
-    if (io) {
-      io.to(`user:${ride.driver}`).emit('booking:new', populated);
-      io.emit('ride:updated', { rideId: ride._id.toString(), seatsAvailable: ride.seatsAvailable });
-    }
-
-    res.status(201).json({ booking: populated });
-  } catch (err) {
-    res.status(400).json({ error: err.message });
   }
+
+  await Notification.create({
+    user: ride.driver,
+    type: 'booking',
+    title: wasExisting ? 'Booking updated' : 'New booking request',
+    body: wasExisting
+      ? `${req.user.name} added ${seats} more seat(s), ${ride.from} → ${ride.to}.`
+      : `${req.user.name} booked ${seats} seat(s), ${ride.from} → ${ride.to}.`,
+  });
+
+  const populated = await Booking.findById(booking._id)
+    .populate('driver', 'name rating car')
+    .populate('ride');
+
+  const io = req.app.get('io');
+  if (io) {
+    io.to(`user:${ride.driver}`).emit('booking:new', populated);
+    io.emit('ride:updated', { rideId: ride._id.toString(), seatsAvailable: ride.seatsAvailable });
+  }
+
+  res.status(201).json({ booking: populated });
 });
 
 // GET /api/bookings/mine?status=upcoming  (Passenger — My Trips tabs)

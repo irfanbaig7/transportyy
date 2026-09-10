@@ -1,19 +1,16 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FileText, Camera, Check } from 'lucide-react'
+import { FileText, Camera, Check, Loader2 } from 'lucide-react'
 import { Screen, TopBar, Button, Stepper, StickyCTA } from '../../components'
 import { useApp } from '../../context/AppContext'
 
 const STEPS = ['Basic Info', 'Car Details', 'Documents', 'Review']
 
-// No real file storage wired yet — clicking a row just marks it "uploaded"
-// and stores a placeholder URL. Swap this for real file upload (S3/Cloudinary)
-// later; the backend field (updateDocuments) is already in place.
 const ROWS = [
-    { key: 'licenseUrl', label: 'Driving License', action: 'Upload Front', icon: FileText },
-    { key: 'rcUrl', label: 'RC (Registration Certificate)', action: 'Upload', icon: FileText },
-    { key: 'insuranceUrl', label: 'Car Insurance', action: 'Upload', icon: FileText },
-    { key: 'photoUrl', label: 'Profile Photo', action: 'Upload', icon: Camera },
+    { key: 'licenseUrl', label: 'Driving License', action: 'Upload Front', icon: FileText, docType: 'license' },
+    { key: 'rcUrl', label: 'RC (Registration Certificate)', action: 'Upload', icon: FileText, docType: 'rc' },
+    { key: 'insuranceUrl', label: 'Car Insurance', action: 'Upload', icon: FileText, docType: 'insurance' },
+    { key: 'photoUrl', label: 'Profile Photo', action: 'Upload', icon: Camera, docType: 'photo' },
 ]
 
 export default function DriverDocuments() {
@@ -25,10 +22,39 @@ export default function DriverDocuments() {
         insuranceUrl: user?.documents?.insuranceUrl || '',
         photoUrl: user?.documents?.photoUrl || '',
     })
+    const [uploading, setUploading] = useState('') // jo key upload ho raha hai uska naam
     const [saving, setSaving] = useState(false)
     const [err, setErr] = useState('')
+    const fileInputs = useRef({})
 
-    const markUploaded = (key) => setDocs((d) => ({ ...d, [key]: `uploaded-${key}-${Date.now()}` }))
+    const triggerUpload = (key) => fileInputs.current[key]?.click()
+
+    const handleFileChange = async (row, e) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        setErr('')
+        setUploading(row.key)
+        try {
+            const token = localStorage.getItem('chalo_token')
+            const formData = new FormData()
+            formData.append('file', file)
+            formData.append('docType', row.docType)
+
+            const res = await fetch('/api/upload/document', {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
+                body: formData,
+            })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.error || 'Upload failed')
+
+            setDocs((d) => ({ ...d, [row.key]: data.url }))
+        } catch (e2) {
+            setErr(e2.message || 'Could not upload file.')
+        } finally {
+            setUploading('')
+        }
+    }
 
     const next = async () => {
         setErr('')
@@ -54,18 +80,27 @@ export default function DriverDocuments() {
             <div className="space-y-3">
                 {ROWS.map((r) => {
                     const done = !!docs[r.key]
+                    const isUploading = uploading === r.key
                     return (
                         <div key={r.key} className="flex items-center justify-between p-4 rounded-xl border border-line bg-surface">
                             <span className="flex items-center gap-2.5 text-sm font-medium text-ink">
                                 <r.icon size={18} className="text-muted" /> {r.label}
                             </span>
+                            <input
+                                type="file"
+                                accept="image/*,.pdf"
+                                ref={(el) => (fileInputs.current[r.key] = el)}
+                                onChange={(e) => handleFileChange(r, e)}
+                                className="hidden"
+                            />
                             <button
-                                onClick={() => markUploaded(r.key)}
+                                onClick={() => triggerUpload(r.key)}
+                                disabled={isUploading}
                                 className={`tap text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1 ${done ? 'bg-brand text-white' : 'text-brand bg-brand-tint'
                                     }`}
                             >
-                                {done && <Check size={12} />}
-                                {done ? 'Uploaded' : r.action}
+                                {isUploading ? <Loader2 size={12} className="animate-spin" /> : done && <Check size={12} />}
+                                {isUploading ? 'Uploading…' : done ? 'Uploaded' : r.action}
                             </button>
                         </div>
                     )

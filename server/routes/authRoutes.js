@@ -3,6 +3,8 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { authLimiter, otpLimiter } = require('../middleware/rateLimiter');
+const { sendOtpSms } = require('../utils/sms'); // 👈 NEW 
 
 const signToken = (id) =>
   // 🔑 Uses JWT_SECRET + JWT_EXPIRES_IN from server/.env — see .env.example
@@ -71,6 +73,8 @@ router.post('/forgot-password', async (req, res) => {
     user.resetOtp = otp;
     user.resetOtpExpires = Date.now() + 10 * 60 * 1000; // 10 min
     await user.save();
+
+    await sendOtpSms(phone, otp);
 
     // 🔑 INJECT HERE: real SMS bhejne ke liye Twilio/MSG91 call yaha karo,
     // aur neeche wali dev line hata do taaki OTP response me expose na ho.
