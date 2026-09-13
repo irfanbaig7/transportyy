@@ -20,16 +20,15 @@ export default function BottomNav() {
   ]
 
   return (
-    <div className="relative shrink-0 bg-surface border-t border-line">
-      {isDriver && (
-        <Link
-          to="/post/route"
-          aria-label="Post a ride"
-          className="tap absolute left-1/2 -translate-x-1/2 -top-6 h-14 w-14 rounded-full bg-brand grid place-items-center text-white shadow-[var(--shadow-float)] active:scale-95 transition"
-        >
-          <Plus size={26} />
-        </Link>
-      )}
+    <div className="relative shrink-0 bg-surface border-t border-line lg:hidden">      {isDriver && (
+      <Link
+        to="/post/route"
+        aria-label="Post a ride"
+        className="tap absolute left-1/2 -translate-x-1/2 -top-6 h-14 w-14 rounded-full bg-brand grid place-items-center text-white shadow-[var(--shadow-float)] active:scale-95 transition"
+      >
+        <Plus size={26} />
+      </Link>
+    )}
       <div className={`grid ${isDriver ? 'grid-cols-5' : 'grid-cols-4'} items-center h-16 px-2 pb-[env(safe-area-inset-bottom)]`}>
         {left.map((t) => <Tab key={t.label} {...t} active={isActive(t.match)} />)}
         {isDriver && <span aria-hidden />}

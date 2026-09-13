@@ -9,7 +9,6 @@ export default function Home() {
     const navigate = useNavigate()
     const { user, unreadNotifications, setSearch, refreshNotifications, socket } = useApp()
 
-    // existing popularRoutes useEffect ke just baad ADD KARO:
     useEffect(() => {
         if (!socket) return
         const refetch = () => {
@@ -34,9 +33,6 @@ export default function Home() {
             .finally(() => setLoadingRoutes(false))
     }, [])
 
-    // Desktop mice don't drag horizontally by default — translate vertical
-    // wheel motion into horizontal scroll, and support click-drag too, so the
-    // strip is actually scrollable without needing a touchscreen.
     const onWheel = (e) => {
         const el = scrollerRef.current
         if (!el) return
@@ -74,7 +70,7 @@ export default function Home() {
                     title={`Hi, ${user.name.split(' ')[0]} 👋`}
                     subtitle="Where are you headed today?"
                     right={
-                        <Link to="/notifications" className="tap relative h-9 w-9 grid place-items-center rounded-full hover:bg-black/5">
+                        <Link to="/notifications" className="tap relative h-9 w-9 grid place-items-center rounded-full hover:bg-black/5 lg:hidden">
                             <Bell size={20} className="text-ink" />
                             {unreadNotifications > 0 && <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500" />}
                         </Link>
@@ -85,19 +81,19 @@ export default function Home() {
         >
             <button
                 onClick={() => navigate('/search')}
-                className="tap w-full flex items-center gap-3 rounded-2xl bg-surface border border-line p-4 shadow-[var(--shadow-card)] mb-5 text-left"
+                className="tap w-full flex items-center gap-3 rounded-2xl bg-surface border border-line p-4 lg:p-6 shadow-[var(--shadow-card)] mb-5 lg:mb-8 text-left"
             >
-                <span className="h-10 w-10 rounded-xl bg-brand-tint grid place-items-center"><MapPin size={18} className="text-brand" /></span>
+                <span className="h-10 w-10 lg:h-12 lg:w-12 rounded-xl bg-brand-tint grid place-items-center"><MapPin size={18} className="text-brand" /></span>
                 <span className="flex-1">
-                    <span className="block text-sm font-semibold text-ink">Search a ride</span>
-                    <span className="block text-xs text-muted">Enter pickup & destination</span>
+                    <span className="block text-sm lg:text-base font-semibold text-ink">Search a ride</span>
+                    <span className="block text-xs lg:text-sm text-muted">Enter pickup & destination</span>
                 </span>
                 <ArrowRight size={18} className="text-muted" />
             </button>
 
-            <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-bold text-ink">Popular Routes</p>
-                {popular.length > 0 && <span className="text-[11px] text-muted">Most recently posted first</span>}
+            <div className="flex items-center justify-between mb-2 lg:mb-4">
+                <p className="text-sm lg:text-lg font-bold text-ink">Popular Routes</p>
+                {popular.length > 0 && <span className="text-[11px] lg:text-xs text-muted">Most recently posted first</span>}
             </div>
 
             {loadingRoutes ? (
@@ -110,17 +106,17 @@ export default function Home() {
                     onPointerMove={onPointerMove}
                     onPointerUp={endDrag}
                     onPointerLeave={endDrag}
-                    className="flex gap-3 overflow-x-auto no-scrollbar mb-6 -mx-5 px-5 cursor-grab active:cursor-grabbing select-none"
+                    className="flex lg:grid lg:grid-cols-3 xl:grid-cols-4 gap-3 overflow-x-auto lg:overflow-visible no-scrollbar mb-6 -mx-5 px-5 lg:mx-0 lg:px-0 cursor-grab active:cursor-grabbing select-none"
                 >
                     {popular.map((r, i) => (
                         <button
                             key={`${r.from}-${r.to}-${i}`}
                             onClick={() => pickRoute(r)}
-                            className="tap shrink-0 w-44 rounded-2xl bg-surface border border-line p-3.5 text-left"
+                            className="tap shrink-0 w-44 lg:w-auto rounded-2xl bg-surface border border-line p-3.5 lg:p-5 text-left hover:border-brand transition"
                         >
-                            <p className="text-sm font-semibold text-ink">{r.from} → {r.to}</p>
-                            <p className="text-xs text-muted mt-1">from ₹{r.price}</p>
-                            <p className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-brand">
+                            <p className="text-sm lg:text-base font-semibold text-ink">{r.from} → {r.to}</p>
+                            <p className="text-xs lg:text-sm text-muted mt-1">from ₹{r.price}</p>
+                            <p className="mt-2 inline-flex items-center gap-1 text-[11px] lg:text-xs font-semibold text-brand">
                                 <Users size={11} /> {r.count} ride{r.count > 1 ? 's' : ''} available
                             </p>
                         </button>
@@ -129,14 +125,6 @@ export default function Home() {
             ) : (
                 <p className="text-sm text-muted mb-6">No rides posted yet. Be the first to post one!</p>
             )}
-
-            {/* <div className="rounded-2xl bg-neutral-900 text-white p-5 flex items-center gap-4">
-                <div className="flex-1">
-                    <p className="font-bold">Have a car? Start earning.</p>
-                    <p className="text-xs opacity-70 mt-1">List your ride and offer seats.</p>
-                </div>
-                <Button size="sm" to="/driver/basic">Get Started</Button>
-            </div> */}
         </Screen>
     )
 }
